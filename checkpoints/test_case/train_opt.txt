@@ -1,0 +1,43 @@
+--------------Options--------------
+batchSize: 8
+checkpoints_dir: ./checkpoints
+continue_train: False
+display_freq: 100
+display_id: 1
+display_port: 8097
+display_single_pane_ncols: 0
+display_winsize: 256
+fineSize: [256, 256]
+gan_mode: lsgan
+gpu_ids: -1
+img_file: ./datasets/celeba-hq
+isTrain: True
+iter_count: 1
+lambda_g: 1.0
+lambda_kl: 20.0
+lambda_rec: 20.0
+loadSize: [266, 266]
+lr: 0.0001
+lr_policy: lambda
+mask_file: none
+mask_type: [1, 2]
+model: pluralistic
+nThreads: 8
+name: test_case
+niter: 5000000
+niter_decay: 0
+no_augment: False
+no_flip: False
+no_html: False
+no_rotation: False
+no_shuffle: False
+output_scale: 4
+print_freq: 100
+prior_alpha: 0.8
+prior_beta: 8
+resize_or_crop: resize_and_crop
+save_iters_freq: 10000
+save_latest_freq: 1000
+train_paths: two
+which_iter: latest
+----------------End----------------
