@@ -53,6 +53,14 @@ def tensor2im(image_tensor, bytes=255.0, imtype=np.uint8):
 
     return image_numpy.astype(imtype)
 
+def PSNR(a, b):
+    base10 = torch.log(torch.tensor(10.0))
+    max_val = torch.tensor(255).float()
+    mse = torch.mean((a.float() - b.float()) ** 2)
+    if mse == 0:
+        return torch.tensor(0)
+
+    return max_val - 10 * torch.log(mse) / base10
 
 # conver a tensor into a numpy array
 def tensor2array(value_tensor):

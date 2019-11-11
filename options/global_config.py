@@ -1,7 +1,7 @@
 import os
 import yaml
 
-class Config(dict):
+class DataConfig(dict):
     def __init__(self, config_path):
         with open(config_path, 'r') as f:
             self._yaml = f.read()

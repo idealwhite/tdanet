@@ -2,7 +2,7 @@ from PIL import Image, ImageFile
 import torchvision.transforms as transforms
 import torch.utils.data as data
 from .image_folder import make_dataset
-from util import task
+from util import task, util
 import random
 
 class CreateDataset(data.Dataset):
@@ -54,10 +54,10 @@ class CreateDataset(data.Dataset):
             negative_captions = self.captions[negative_image]
             negative_caption = negative_captions[random.randint(0,len(negative_captions)-1)] \
                                  if type(negative_captions) == list else negative_captions
-            negative_caption_idx, negative_caption_len = _caption_to_idx(self.wordtoix, negative_caption, self.max_length)
+            negative_caption_idx, negative_caption_len = util._caption_to_idx(self.wordtoix, negative_caption, self.max_length)
         else:
             negative_caption_idx, negative_caption_len = None, None
-        caption_idx, caption_len = _caption_to_idx(self.wordtoix, caption, self.max_length)
+        caption_idx, caption_len = util._caption_to_idx(self.wordtoix, caption, self.max_length)
         if self.debug == 1:
             caption_idx = caption
         return caption_idx, caption_len, negative_caption_idx, negative_caption_len

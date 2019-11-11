@@ -8,13 +8,12 @@ import glob
 import shutil
 
 parser = argparse.ArgumentParser(description='Evaluation ont the dataset')
-parser.add_argument('--gt_path', type = str, default='/media/lyndon/c6f4bbbd-8d47-4dcb-b0db-d788fe2b2557/dataset/image_painting/imagenet_test.txt',
+parser.add_argument('--gt_path', type = str, default='dataset/image_painting/imagenet_test.txt',
                     help = 'path to original particular solutions')
-parser.add_argument('--save_path', type = str, default='/media/lyndon/c6f4bbbd-8d47-4dcb-b0db-d788fe2b2557/dataset/image_painting/results/ours/imagenet/center',
+parser.add_argument('--save_path', type = str, default='imagenet/center',
                     help='path to save the test dataset')
 parser.add_argument('--num_test', type=int, default=1000,
                     help='how many images to load for each test')
-# parser.add_argument('--sample_numbers',type=int,default=50, help='how many smaple images for testing')
 args = parser.parse_args()
 
 
@@ -91,7 +90,7 @@ if __name__ == "__main__":
                         best_index = index2
                 except:
                     print(pre_paths[index2])
-            shutil.copy(pre_paths[best_index], '/media/lyndon/c6f4bbbd-8d47-4dcb-b0db-d788fe2b2557/dataset/image_painting/results/ours/imagenet/center_copy/')
+            # shutil.copy(pre_paths[best_index], '/media/lyndon/c6f4bbbd-8d47-4dcb-b0db-d788fe2b2557/dataset/image_painting/results/ours/imagenet/center_copy/')
             print(pre_paths[best_index])
             print(l1_sample, PSNR_sample, TV_sample)
 

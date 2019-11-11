@@ -1,7 +1,7 @@
 import torch
 from .base_model import BaseModel
 from . import network, base_function, external_function
-from util import task
+from util import task, util
 import itertools
 
 
@@ -75,7 +75,6 @@ class Pluralistic(BaseModel):
 
         # get I_m and I_c for image with mask and complement regions for training
         self.img_truth = self.img * 2 - 1
-        # TODO 1: adapt this part to let I as input
         self.img_m = self.mask * self.img_truth
         self.img_c = self.img_truth# (1 - self.mask) * self.img_truth
 
@@ -84,10 +83,10 @@ class Pluralistic(BaseModel):
         self.scale_mask = task.scale_pyramid(self.mask, self.opt.output_scale)
 
         # TODO 2: adapt text input
-        word_embeddings, sentence_embedding = task.vectorize_captions_idx_batch(caption_idx, caption_length,
-                                                                           self.text_encoder)
-        text_mask = task.lengths_to_mask(caption_length, max_length=word_embeddings.size(-1), device=word_embeddings.device)
-        _, sentence_embedding_neg = task.vectorize_captions_idx_batch(caption_idx_neg, caption_len_neg, self.text_encoder)
+        # word_embeddings, sentence_embedding = util.vectorize_captions_idx_batch(caption_idx, caption_length,
+        #                                                                    self.text_encoder)
+        # text_mask = util.lengths_to_mask(caption_length, max_length=word_embeddings.size(-1), device=word_embeddings.device)
+        # _, sentence_embedding_neg = util.vectorize_captions_idx_batch(caption_idx_neg, caption_len_neg, self.text_encoder)
 
     def test(self):
         """Forward function used in test time"""
@@ -112,7 +111,6 @@ class Pluralistic(BaseModel):
         """Calculate encoder distribution for img_m, img_c only in train, all about distribution layer of VAE model"""
         # get distribution
         sum_valid = (torch.mean(self.mask.view(self.mask.size(0), -1), dim=1) - 1e-5).view(-1, 1, 1, 1)
-        # TODO 2: adapt this part to let I as reconstruction input
         m_sigma = 1 # / (1 + ((sum_valid - self.prior_alpha) * self.prior_beta).exp_())
         p_distribution, q_distribution, kl_rec, kl_g = 0, 0, 0, 0
         self.distribution = []

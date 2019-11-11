@@ -38,6 +38,7 @@ class BaseModel():
             self.schedulers = [base_function.get_scheduler(optimizer, opt) for optimizer in self.optimizers]
         if not self.isTrain or opt.continue_train:
             self.load_networks(opt.which_iter)
+        # TODO: init language model here after code are ready.
 
     def _init_language_model(self, opt):
         x = pickle.load(open(opt.vocab_path, 'rb'))
