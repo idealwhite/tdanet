@@ -12,7 +12,7 @@ def is_image_file(filename):
 
 
 def make_dataset(path_files):
-    if path_files.find('.flist') != -1 or path_files.find('.txt') != -1:
+    if os.path.isfile(path_files):
         paths, size = make_dataset_txt(path_files)
     else:
         paths, size = make_dataset_dir(path_files)
