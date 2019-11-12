@@ -41,19 +41,7 @@ def compute_errors(gt, pre):
 if __name__ == "__main__":
 
     gt_paths, gt_size = make_dataset(args.gt_path)
-    #pre_paths, pre_size = make_dataset(args.save_path)
 
-    # for i in range(20000):
-    #     print(i)
-    #     name = gt_paths[i].split("/")[-1]
-    #     path = os.path.join(args.save_path,name)
-    #     try:
-    #         image = Image.open(path)
-    #     except:
-    #         print (path)
-
-    # assert gt_size == pre_size
-    #
     iters = int(20000/args.num_test)
 
     l1_loss = np.zeros(iters, np.float32)
@@ -74,7 +62,7 @@ if __name__ == "__main__":
             l1_sample = 1000
             PSNR_sample = 0
             TV_sample = 1000
-            name = gt_paths[index].split('/')[-1].split("out")[0]+"*"
+            name = gt_paths[index].split('/')[-1].split(".")[0]+"*"
             pre_paths = sorted(glob.glob(os.path.join(args.save_path, name)))
             num_image_files = len(pre_paths)
 
