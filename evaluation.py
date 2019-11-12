@@ -6,6 +6,7 @@ from dataloader.image_folder import make_dataset
 import os
 import glob
 import shutil
+from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description='Evaluation ont the dataset')
 parser.add_argument('--gt_path', type = str, default='dataset/image_painting/imagenet_test.txt',
@@ -48,7 +49,7 @@ if __name__ == "__main__":
     PSNR = np.zeros(iters, np.float32)
     TV = np.zeros(iters, np.float32)
 
-    for i in range(0, iters):
+    for i in tqdm(range(0, iters)):
         l1_batch = np.zeros(args.batch_test, np.float32)
         PSNR_batch = np.zeros(args.batch_test, np.float32)
         TV_batch = np.zeros(args.batch_test, np.float32)
@@ -79,8 +80,8 @@ if __name__ == "__main__":
                 except:
                     print(pre_paths[index2])
             # shutil.copy(pre_paths[best_index], '/media/lyndon/c6f4bbbd-8d47-4dcb-b0db-d788fe2b2557/dataset/image_painting/results/ours/imagenet/center_copy/')
-            print(pre_paths[best_index])
-            print(l1_sample, PSNR_sample, TV_sample)
+            # print(pre_paths[best_index])
+            # print(l1_sample, PSNR_sample, TV_sample)
 
             l1_batch[j], PSNR_batch[j], TV_batch[j] = l1_sample, PSNR_sample, TV_sample
 
