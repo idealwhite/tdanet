@@ -74,7 +74,7 @@ if __name__ == "__main__":
             l1_sample = 1000
             PSNR_sample = 0
             TV_sample = 1000
-            name = gt_paths[index].split('/')[-1].split(".")[0]+"*"
+            name = gt_paths[index].split('/')[-1].split("out")[0]+"*"
             pre_paths = sorted(glob.glob(os.path.join(args.save_path, name)))
             num_image_files = len(pre_paths)
 
