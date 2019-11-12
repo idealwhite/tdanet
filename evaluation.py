@@ -12,8 +12,8 @@ parser.add_argument('--gt_path', type = str, default='dataset/image_painting/ima
                     help = 'path to original particular solutions')
 parser.add_argument('--save_path', type = str, default='imagenet/center',
                     help='path to save the test dataset')
-parser.add_argument('--num_test', type=int, default=1000,
-                    help='how many images to load for each test')
+parser.add_argument('--batch_test', type=int, default=1000,
+                    help='how many images to load for each test, just like batch')
 args = parser.parse_args()
 
 
@@ -42,27 +42,27 @@ if __name__ == "__main__":
 
     gt_paths, gt_size = make_dataset(args.gt_path)
 
-    iters = int(20000/args.num_test)
+    iters = int(gt_size/args.batch_test)
 
     l1_loss = np.zeros(iters, np.float32)
     PSNR = np.zeros(iters, np.float32)
     TV = np.zeros(iters, np.float32)
 
     for i in range(0, iters):
-        l1_iter = np.zeros(args.num_test, np.float32)
-        PSNR_iter = np.zeros(args.num_test, np.float32)
-        TV_iter = np.zeros(args.num_test, np.float32)
+        l1_batch = np.zeros(args.batch_test, np.float32)
+        PSNR_batch = np.zeros(args.batch_test, np.float32)
+        TV_batch = np.zeros(args.batch_test, np.float32)
 
-        num = i*args.num_test
+        num = i*args.batch_test
 
-        for j in range(args.num_test):
+        for j in range(args.batch_test):
             index = num+j
             gt_image = Image.open(gt_paths[index]).resize([256,256]).convert('RGB')
             gt_numpy = np.array(gt_image).astype(np.float32)
             l1_sample = 1000
             PSNR_sample = 0
             TV_sample = 1000
-            name = gt_paths[index].split('/')[-1].split(".")[0]+"*"
+            name = gt_paths[index].split('/')[-1].split("truth")[0]+"*"
             pre_paths = sorted(glob.glob(os.path.join(args.save_path, name)))
             num_image_files = len(pre_paths)
 
@@ -82,11 +82,11 @@ if __name__ == "__main__":
             print(pre_paths[best_index])
             print(l1_sample, PSNR_sample, TV_sample)
 
-            l1_iter[j], PSNR_iter[j], TV_iter[j] = l1_sample, PSNR_sample, TV_sample
+            l1_batch[j], PSNR_batch[j], TV_batch[j] = l1_sample, PSNR_sample, TV_sample
 
-        l1_loss[i] = np.mean(l1_iter)
-        PSNR[i] = np.mean(PSNR_iter)
-        TV[i] = np.mean(TV_iter)
+        l1_loss[i] = np.mean(l1_batch)
+        PSNR[i] = np.mean(PSNR_batch)
+        TV[i] = np.mean(TV_batch)
 
         print(i)
         print('{:10.4f},{:10.4f},{:10.4f}'.format(l1_loss[i], PSNR[i], TV[i]))
