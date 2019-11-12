@@ -14,13 +14,16 @@ class Pluralistic(BaseModel):
     def modify_options(parser, is_train=True):
         """Add new options and rewrite default values for existing options"""
         parser.add_argument('--output_scale', type=int, default=4, help='# of number of the output scale')
+        parser.add_argument('--prior_alpha', type=float, default=0.8,
+                            help='factor to contorl prior variation: 1/(1+e^((x-0.8)*8))')
+        parser.add_argument('--prior_beta', type=float, default=8,
+                            help='factor to contorl prior variation: 1/(1+e^((x-0.8)*8))')
+
         if is_train:
             parser.add_argument('--train_paths', type=str, default='two', help='training strategies with one path or two paths')
             parser.add_argument('--lambda_rec', type=float, default=20.0, help='weight for image reconstruction loss')
             parser.add_argument('--lambda_kl', type=float, default=20.0, help='weight for kl divergence loss')
             parser.add_argument('--lambda_g', type=float, default=1.0, help='weight for generation loss')
-            parser.add_argument('--prior_alpha', type=float, default=0.8, help='factor to contorl prior variation: 1/(1+e^((x-0.8)*8))')
-            parser.add_argument('--prior_beta', type=float, default=8, help='factor to contorl prior variation: 1/(1+e^((x-0.8)*8))')
 
         return parser
 
