@@ -134,7 +134,8 @@ class Visualizer():
         )
 
     def display_current_text(self, text):
-        self.vis.text(text, win='caption')
+        for key, value in text:
+            self.vis.text(value, win=key)
 
     # errors: same format as |errors| of plotCurrentErrors
     def print_current_errors(self, epoch, i, errors, t):
