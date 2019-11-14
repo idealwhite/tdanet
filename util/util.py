@@ -1,7 +1,6 @@
 import numpy as np
 import os
 import imageio
-import math
 import torch
 
 from nltk.tokenize import word_tokenize

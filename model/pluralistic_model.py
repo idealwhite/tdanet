@@ -68,7 +68,6 @@ class Pluralistic(BaseModel):
         # load the pretrained model and schedulers
         self.setup(opt)
 
-        # TODO: init language stuff
         text_config = TextConfig(opt.text_config)
         self._init_language_model(text_config)
 
@@ -84,8 +83,8 @@ class Pluralistic(BaseModel):
         self.text_encoder.load_state_dict(state_dict)
         self.text_encoder.eval()
         self.text_encoder.requires_grad_(False)
-        if len(self.gpu_ids) > 0:
-            self.text_encoder.cuda(self.gpu_ids[0], True)
+        if len(self.gpu_ids) > 0 and torch.cuda.is_available():
+            self.text_encoder.cuda()
 
     def set_input(self, input, epoch=0):
         """Unpack input data from the data loader and perform necessary pre-process steps"""
