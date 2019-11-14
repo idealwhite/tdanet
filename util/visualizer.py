@@ -133,6 +133,9 @@ class Visualizer():
             win=self.display_id+30
         )
 
+    def display_current_text(self, text):
+        self.vis.text(text, win='caption')
+
     # errors: same format as |errors| of plotCurrentErrors
     def print_current_errors(self, epoch, i, errors, t):
         message = '(epoch: %d, iters: %d, time: %.3f) ' % (epoch, i, t)

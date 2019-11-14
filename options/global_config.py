@@ -1,7 +1,7 @@
 import os
 import yaml
 
-class DataConfig(dict):
+class TextConfig(dict):
     def __init__(self, config_path):
         with open(config_path, 'r') as f:
             self._yaml = f.read()
@@ -35,7 +35,5 @@ DEFAULT_CONFIG = {
     'CATE_IMAGE_TRAIN' : "./datasets/CUB_200_2011/cate_image_train.json",
     'IMAGE_CATE_TRAIN' : "./datasets/CUB_200_2011/image_cate.json",
 
-    'TRAIN_CAPTION' : "./datasets/CUB_200_2011/caption.json",
-    'VAL_CAPTION' : "./datasets/CUB_200_2011/caption.json",
-    'TEST_CAPTION' : "./datasets/CUB_200_2011/caption.json",
+    'CAPTION' : "./datasets/CUB_200_2011/caption.json",
 }

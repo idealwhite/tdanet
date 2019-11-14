@@ -15,6 +15,7 @@ class BaseModel():
         self.log_names = []
         self.model_names = []
         self.visual_names = []
+        self.text_names = []
         self.value_names = []
         self.image_paths = []
         self.optimizers = []
@@ -38,15 +39,6 @@ class BaseModel():
             self.schedulers = [base_function.get_scheduler(optimizer, opt) for optimizer in self.optimizers]
         if not self.isTrain or opt.continue_train:
             self.load_networks(opt.which_iter)
-        # TODO: init language model here after code are ready.
-
-    def _init_language_model(self, opt):
-        x = pickle.load(open(opt.vocab_path, 'rb'))
-        self.ixtoword = x[2]
-        self.wordtoix = x[3]
-        del x
-
-        self.word_len = len(self.wordtoix)
 
     def eval(self):
         """Make models eval mode during test time"""
@@ -85,13 +77,22 @@ class BaseModel():
             if isinstance(name, str):
                 value = getattr(self, name)
                 if isinstance(value, list):
-                    # visual multi-scale ouputs
-                    # for i in range(len(value)):
-                    #     visual_ret[name + str(i)] = util.tensor2im(value[i].data)
                     visual_ret[name] = util.tensor2im(value[-1].data)
                 else:
                     visual_ret[name] = util.tensor2im(value.data)
         return visual_ret
+
+    def get_current_text(self):
+        """Return the last image's caption of current batch"""
+        text_ret = OrderedDict()
+        for name in self.text_names:
+            if isinstance(name, str):
+                text = getattr(self, name)
+                if isinstance(text, list):
+                    text_ret[name] = text[0]
+                else:
+                    text_ret[name] = text
+        return text_ret
 
     def get_current_dis(self):
         """Return the distribution of encoder features"""

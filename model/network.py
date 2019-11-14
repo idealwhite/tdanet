@@ -324,3 +324,213 @@ class PatchDiscriminator(nn.Module):
     def forward(self, x):
         out = self.model(x)
         return out
+
+
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
+from torch.autograd import Variable
+
+def conv1x1(in_planes, out_planes):
+    "1x1 convolution with padding"
+    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=1,
+                     padding=0, bias=False)
+
+
+def func_attention(query, context, gamma1):
+    """
+    query: batch x ndf x queryL
+    context: batch x ndf x ih x iw (sourceL=ihxiw)
+    mask: batch_size x sourceL
+    """
+    batch_size, queryL = query.size(0), query.size(2)
+    ih, iw = context.size(2), context.size(3)
+    sourceL = ih * iw
+
+    # --> batch x sourceL x ndf
+    context = context.view(batch_size, -1, sourceL)
+    contextT = torch.transpose(context, 1, 2).contiguous()
+
+    # Get attention
+    # (batch x sourceL x ndf)(batch x ndf x queryL)
+    # -->batch x sourceL x queryL
+    attn = torch.bmm(contextT, query) # Eq. (7) in AttnGAN paper
+    # --> batch*sourceL x queryL
+    attn = attn.view(batch_size*sourceL, queryL)
+    attn = nn.Softmax()(attn)  # Eq. (8)
+
+    # --> batch x sourceL x queryL
+    attn = attn.view(batch_size, sourceL, queryL)
+    # --> batch*queryL x sourceL
+    attn = torch.transpose(attn, 1, 2).contiguous()
+    attn = attn.view(batch_size*queryL, sourceL)
+    #  Eq. (9)
+    attn = attn * gamma1
+    attn = nn.Softmax()(attn)
+    attn = attn.view(batch_size, queryL, sourceL)
+    # --> batch x sourceL x queryL
+    attnT = torch.transpose(attn, 1, 2).contiguous()
+
+    # (batch x ndf x sourceL)(batch x sourceL x queryL)
+    # --> batch x ndf x queryL
+    weightedContext = torch.bmm(context, attnT)
+
+    return weightedContext, attn.view(batch_size, -1, ih, iw)
+
+
+class GlobalAttentionGeneral(nn.Module):
+    """
+    Global attention takes a matrix and a query metrix.
+    Based on each query vector q, it computes a parameterized convex combination of the matrix
+    based.
+    H_1 H_2 H_3 ... H_n
+      q   q   q       q
+        |  |   |       |
+          \ |   |      /
+                  .....
+              \   |  /
+                      a
+    Constructs a unit mapping.
+    $$(H_1 + H_n, q) => (a)$$
+    Where H is of `batch x n x dim` and q is of `batch x dim`.
+    References:
+    https://github.com/OpenNMT/OpenNMT-py/tree/fc23dfef1ba2f258858b2765d24565266526dc76/onmt/modules
+    http://www.aclweb.org/anthology/D15-1166
+    """
+    def __init__(self, idf, cdf):
+        super(GlobalAttentionGeneral, self).__init__()
+        self.conv_context = conv1x1(cdf, idf)
+        self.sm = nn.Softmax()
+        self.mask = None
+
+    def applyMask(self, mask):
+        self.mask = mask  # batch x sourceL
+
+    def forward(self, input, context):
+        """
+            input: batch x idf x ih x iw (queryL=ihxiw)
+            context: batch x cdf x sourceL
+        """
+        ih, iw = input.size(2), input.size(3)
+        queryL = ih * iw
+        batch_size, sourceL = context.size(0), context.size(2)
+
+        # --> batch x queryL x idf
+        target = input.view(batch_size, -1, queryL)
+        targetT = torch.transpose(target, 1, 2).contiguous()
+        # batch x cdf x sourceL --> batch x cdf x sourceL x 1
+        sourceT = context.unsqueeze(3)
+        # --> batch x idf x sourceL
+        sourceT = self.conv_context(sourceT).squeeze(3)
+
+        # Get attention
+        # (batch x queryL x idf)(batch x idf x sourceL)
+        # -->batch x queryL x sourceL
+        attn = torch.bmm(targetT, sourceT)
+        # --> batch*queryL x sourceL
+        attn = attn.view(batch_size*queryL, sourceL)
+        if self.mask is not None:
+            # batch_size x sourceL --> batch_size*queryL x sourceL
+            mask = self.mask.repeat(queryL, 1)
+            attn.data.masked_fill_(mask.data, -float('inf'))
+        attn = self.sm(attn)  # Eq. (2)
+        # --> batch x queryL x sourceL
+        attn = attn.view(batch_size, queryL, sourceL)
+        # --> batch x sourceL x queryL
+        attn = torch.transpose(attn, 1, 2).contiguous()
+
+        # (batch x idf x sourceL)(batch x sourceL x queryL)
+        # --> batch x idf x queryL
+        weightedContext = torch.bmm(sourceT, attn)
+        weightedContext = weightedContext.view(batch_size, -1, ih, iw)
+        attn = attn.view(batch_size, -1, ih, iw)
+
+        return weightedContext, attn
+
+# ############## Text2Image Encoder-Decoder #######
+class RNN_ENCODER(nn.Module):
+    def __init__(self, ntoken, ninput=300, drop_prob=0.5,
+                 nhidden=128, nlayers=1, bidirectional=True):
+        super(RNN_ENCODER, self).__init__()
+
+        self.n_steps = 25
+        self.rnn_type = 'LSTM'
+
+        self.ntoken = ntoken  # size of the dictionary
+        self.ninput = ninput  # size of each embedding vector
+        self.drop_prob = drop_prob  # probability of an element to be zeroed
+        self.nlayers = nlayers  # Number of recurrent layers
+        self.bidirectional = bidirectional
+
+        if bidirectional:
+            self.num_directions = 2
+        else:
+            self.num_directions = 1
+        # number of features in the hidden state
+        self.nhidden = nhidden // self.num_directions
+
+        self.define_module()
+        self.init_weights()
+
+    def define_module(self):
+        self.encoder = nn.Embedding(self.ntoken, self.ninput)
+        self.drop = nn.Dropout(self.drop_prob)
+        if self.rnn_type == 'LSTM':
+            # dropout: If non-zero, introduces a dropout layer on
+            # the outputs of each RNN layer except the last layer
+            self.rnn = nn.LSTM(self.ninput, self.nhidden,
+                               self.nlayers, batch_first=True,
+                               dropout=self.drop_prob,
+                               bidirectional=self.bidirectional)
+        elif self.rnn_type == 'GRU':
+            self.rnn = nn.GRU(self.ninput, self.nhidden,
+                              self.nlayers, batch_first=True,
+                              dropout=self.drop_prob,
+                              bidirectional=self.bidirectional)
+        else:
+            raise NotImplementedError
+
+    def init_weights(self):
+        initrange = 0.1
+        self.encoder.weight.data.uniform_(-initrange, initrange)
+        # Do not need to initialize RNN parameters, which have been initialized
+        # http://pytorch.org/docs/master/_modules/torch/nn/modules/rnn.html#LSTM
+        # self.decoder.weight.data.uniform_(-initrange, initrange)
+        # self.decoder.bias.data.fill_(0)
+
+    def init_hidden(self, bsz):
+        weight = next(self.parameters()).data
+        if self.rnn_type == 'LSTM':
+            return (Variable(weight.new(self.nlayers * self.num_directions,
+                                        bsz, self.nhidden).zero_()),
+                    Variable(weight.new(self.nlayers * self.num_directions,
+                                        bsz, self.nhidden).zero_()))
+        else:
+            return Variable(weight.new(self.nlayers * self.num_directions,
+                                       bsz, self.nhidden).zero_())
+
+    def forward(self, captions, cap_lens, hidden, mask=None):
+        # input: torch.LongTensor of size batch x n_steps
+        # --> emb: batch x n_steps x ninput
+        emb = self.drop(self.encoder(captions))
+        #
+        # Returns: a PackedSequence object
+        cap_lens = cap_lens.data.tolist()
+        emb = pack_padded_sequence(emb, cap_lens, batch_first=True, enforce_sorted=False)
+        # #hidden and memory (num_layers * num_directions, batch, hidden_size):
+        # tensor containing the initial hidden state for each element in batch.
+        # #output (batch, seq_len, hidden_size * num_directions)
+        # #or a PackedSequence object:
+        # tensor containing output features (h_t) from the last layer of RNN
+        output, hidden = self.rnn(emb, hidden)
+        # PackedSequence object
+        # --> (batch, seq_len, hidden_size * num_directions)
+        output = pad_packed_sequence(output, batch_first=True)[0]
+        # output = self.drop(output)
+        # --> batch x hidden_size*num_directions x seq_len
+        words_emb = output.transpose(1, 2)
+        # --> batch x num_directions*hidden_size
+        if self.rnn_type == 'LSTM':
+            sent_emb = hidden[0].transpose(0, 1).contiguous()
+        else:
+            sent_emb = hidden.transpose(0, 1).contiguous()
+        sent_emb = sent_emb.view(-1, self.nhidden * self.num_directions)
+        return words_emb, sent_emb

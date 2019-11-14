@@ -6,6 +6,10 @@ import torch
 
 from nltk.tokenize import word_tokenize
 
+def idx_to_caption(ixtoword, caption, length):
+    """ Turn idx to word"""
+    return ' '.join([ixtoword[caption[i]] for i in range(length)])
+
 def _caption_to_idx(wordtoix, caption, max_length):
     '''Transform single text caption to idx and length tensor'''
     caption_token = word_tokenize(caption.lower())

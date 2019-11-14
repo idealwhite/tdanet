@@ -3,7 +3,9 @@ from .base_model import BaseModel
 from . import network, base_function, external_function
 from util import task, util
 import itertools
-
+from options.global_config import TextConfig
+from model.network import RNN_ENCODER
+import pickle
 
 class Pluralistic(BaseModel):
     """This class implements the pluralistic image completion, for 256*256 resolution image inpainting"""
@@ -34,6 +36,7 @@ class Pluralistic(BaseModel):
         self.loss_names = ['kl_rec', 'kl_g', 'app_rec', 'app_g', 'ad_g', 'img_d', 'ad_rec', 'img_d_rec']
         self.log_names = ['PSNR_rec', 'PSNR_g']
         self.visual_names = ['img_m', 'img_c', 'img_truth', 'img_out', 'img_g', 'img_rec']
+        self.text_names = ['text_positive', 'text_negative']
         self.value_names = ['u_m', 'sigma_m', 'u_post', 'sigma_post', 'u_prior', 'sigma_prior']
         self.model_names = ['E', 'G', 'D', 'D_rec']
         self.distribution = []
@@ -65,12 +68,35 @@ class Pluralistic(BaseModel):
         # load the pretrained model and schedulers
         self.setup(opt)
 
+        # TODO: init language stuff
+        text_config = TextConfig(opt.text_config)
+        self._init_language_model(text_config)
+
+    def _init_language_model(self, text_config):
+        x = pickle.load(open(text_config.VOCAB, 'rb'))
+        self.ixtoword = x[2]
+        self.wordtoix = x[3]
+
+        word_len = len(self.wordtoix)
+        self.text_encoder = RNN_ENCODER(word_len, nhidden=256)
+
+        state_dict = torch.load(text_config.LANGUAGE_ENCODER, map_location=lambda storage, loc: storage)
+        self.text_encoder.load_state_dict(state_dict)
+        self.text_encoder.eval()
+        self.text_encoder.requires_grad_(False)
+        if len(self.gpu_ids) > 0:
+            self.text_encoder.cuda(self.gpu_ids[0], True)
+
     def set_input(self, input, epoch=0):
         """Unpack input data from the data loader and perform necessary pre-process steps"""
         self.input = input
         self.image_paths = self.input['img_path']
         self.img = input['img']
         self.mask = input['mask']
+        self.caption_idx = input['caption_idx']
+        self.caption_length = input['caption_len']
+        self.caption_idx_neg = input['negative_caption_idx']
+        self.caption_length_neg = input['negative_caption_len']
 
         if len(self.gpu_ids) > 0:
             self.img = self.img.cuda(self.gpu_ids[0], True)
@@ -85,11 +111,16 @@ class Pluralistic(BaseModel):
         self.scale_img = task.scale_pyramid(self.img_truth, self.opt.output_scale)
         self.scale_mask = task.scale_pyramid(self.mask, self.opt.output_scale)
 
-        # TODO 2: adapt text input
-        # word_embeddings, sentence_embedding = util.vectorize_captions_idx_batch(caption_idx, caption_length,
-        #                                                                    self.text_encoder)
-        # text_mask = util.lengths_to_mask(caption_length, max_length=word_embeddings.size(-1), device=word_embeddings.device)
-        # _, sentence_embedding_neg = util.vectorize_captions_idx_batch(caption_idx_neg, caption_len_neg, self.text_encoder)
+        # About text stuff
+        self.text_positive = util.idx_to_caption(\
+                                    self.ixtoword, self.caption_idx[-1].tolist(), self.caption_length[-1].item())
+        self.text_negative = util.idx_to_caption(\
+                                    self.ixtoword, self.caption_idx_neg[-1].tolist(), self.caption_length_neg[-1].item())
+        self.word_embeddings, self.sentence_embedding = util.vectorize_captions_idx_batch(
+                                                    self.caption_idx, self.caption_length, self.text_encoder)
+        self.text_mask = util.lengths_to_mask(self.caption_length, max_length=self.word_embeddings.size(-1))
+        _, self.sentence_embedding_neg = util.vectorize_captions_idx_batch(
+                                                    self.caption_idx_neg, self.caption_length_neg, self.text_encoder)
 
     def test(self):
         """Forward function used in test time"""

@@ -1,26 +1,57 @@
+import torch
+import random
+import json
+import pickle
+import os
 from PIL import Image, ImageFile
 import torchvision.transforms as transforms
 import torch.utils.data as data
 from .image_folder import make_dataset
 from util import task, util
-import random
+from options.global_config import TextConfig
 
 class CreateDataset(data.Dataset):
-    def __init__(self, opt, w2v=None):
+    def __init__(self, opt, debug=False):
         self.opt = opt
+        self.debug = debug
         self.img_paths, self.img_size = make_dataset(opt.img_file)
         # provides random file for training and testing
         if opt.mask_file != 'none':
             self.mask_paths, self.mask_size = make_dataset(opt.mask_file)
         self.transform = get_transform(opt)
-        self.w2v = w2v
+
+        ## ========Abnout text stuff===============
+        text_config = TextConfig(opt.text_config)
+        self.max_length = text_config.MAX_TEXT_LENGTH
+        if 'coco' in text_config.CAPTION.lower():
+            self.num_captions = 5
+        elif 'place' in text_config.CAPTION.lower():
+            self.num_captions = 1
+        else:
+            self.num_captions = 10
+
+        # load caption file
+        with open(text_config.CAPTION, 'r') as f:
+            self.captions = json.load(f)
+        with open(text_config.CATE_IMAGE_TRAIN, 'r') as f:
+            self.category_images_train = json.load(f)
+        with open(text_config.IMAGE_CATE_TRAIN, 'r') as f:
+            self.images_category = json.load(f)
+
+        x = pickle.load(open(text_config.VOCAB, 'rb'))
+        self.ixtoword = x[2]
+        self.wordtoix = x[3]
 
     def __getitem__(self, index):
         # load image
         img, img_path = self.load_img(index)
         # load mask
         mask = self.load_mask(img, index)
-        return {'img': img, 'img_path': img_path, 'mask': mask}
+
+        caption_idx, caption_len, negative_caption_idx, negative_caption_len = self._load_text_idx(index)
+        return {'img': img, 'img_path': img_path, 'mask': mask, \
+                'caption_idx' : torch.Tensor(caption_idx).long(), 'caption_len':caption_len, \
+                'negative_caption_idx': torch.Tensor(negative_caption_idx).long(), 'negative_caption_len':negative_caption_len}
 
     def __len__(self):
         return self.img_size
@@ -36,11 +67,13 @@ class CreateDataset(data.Dataset):
         img_pil.close()
         return img, img_path
 
-    def _load_text_idx(self, image_index, caption_index_of_image):
-        img_name = self._load_name(image_index)
+    def _load_text_idx(self, image_index):
+        img_name = self.img_paths[image_index % self.img_size]
+        caption_index_of_image = image_index // self.img_size  % self.num_captions
+        img_name = os.path.basename(img_name)
         captions = self.captions[img_name]
         caption = captions[caption_index_of_image] if type(captions) == list else captions
-        if self.training:
+        if self.opt.isTrain:
             image_category = self.images_category[img_name]
             # get negative category
             alternate_category = list(self.category_images_train.keys())
@@ -53,13 +86,15 @@ class CreateDataset(data.Dataset):
             # get negative caption
             negative_captions = self.captions[negative_image]
             negative_caption = negative_captions[random.randint(0,len(negative_captions)-1)] \
-                                 if type(negative_captions) == list else negative_captions
-            negative_caption_idx, negative_caption_len = util._caption_to_idx(self.wordtoix, negative_caption, self.max_length)
+                                                if type(negative_captions) == list else negative_captions
+            negative_caption_idx, negative_caption_len = util._caption_to_idx(\
+                                                self.wordtoix, negative_caption, self.max_length)
         else:
             negative_caption_idx, negative_caption_len = None, None
         caption_idx, caption_len = util._caption_to_idx(self.wordtoix, caption, self.max_length)
-        if self.debug == 1:
-            caption_idx = caption
+
+        if self.debug == 1 and self.opt.isTrain:
+            caption_idx, negative_caption_idx = caption, negative_caption
         return caption_idx, caption_len, negative_caption_idx, negative_caption_len
 
     def load_mask(self, img, index):

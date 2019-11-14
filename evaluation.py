@@ -89,8 +89,5 @@ if __name__ == "__main__":
         PSNR[i] = np.mean(PSNR_batch)
         TV[i] = np.mean(TV_batch)
 
-        print(i)
-        print('{:10.4f},{:10.4f},{:10.4f}'.format(l1_loss[i], PSNR[i], TV[i]))
-
     print('{:>10},{:>10},{:>10}'.format('L1_LOSS', 'PSNR', 'TV'))
     print('{:10.4f},{:10.4f},{:10.4f}'.format(l1_loss.mean(), PSNR.mean(), TV.mean()))

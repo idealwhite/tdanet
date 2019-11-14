@@ -20,6 +20,7 @@ class BaseOptions():
         parser.add_argument('--checkpoints_dir', type=str, default='./checkpoints', help='models are save here')
         parser.add_argument('--which_iter', type=str, default='latest', help='which iterations to load')
         parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0, 1, 2 use -1 for CPU')
+        parser.add_argument('--text_config', type=str, default='config.bird.yml', help='path to text config')
 
         # data pattern define
         parser.add_argument('--img_file', type=str, default='/data/dataset/train', help='training and testing dataset')
@@ -30,7 +31,7 @@ class BaseOptions():
         parser.add_argument('--no_flip', action='store_true', help='if specified, do not flip the image for data augmentation')
         parser.add_argument('--no_rotation', action='store_true', help='if specified, do not rotation for data augmentation')
         parser.add_argument('--no_augment', action='store_true', help='if specified, do not augment the image for data augmentation')
-        parser.add_argument('--batchSize', type=int, default=8, help='input batch size')
+        parser.add_argument('--batchSize', type=int, default=2, help='input batch size')
         parser.add_argument('--nThreads', type=int, default=8, help='# threads for loading data')
         parser.add_argument('--no_shuffle', action='store_true',help='if true, takes images serial')
 
