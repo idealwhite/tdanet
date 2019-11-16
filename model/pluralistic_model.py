@@ -34,7 +34,7 @@ class Pluralistic(BaseModel):
         BaseModel.__init__(self, opt)
 
         self.loss_names = ['kl_rec', 'kl_g', 'app_rec', 'app_g', 'ad_g', 'img_d', 'ad_rec', 'img_d_rec', 'word', 'sentence']
-        self.log_names = ['PSNR_rec', 'PSNR_g']
+        self.log_names = []#'PSNR_rec', 'PSNR_g']
         self.visual_names = ['img_m', 'img_truth', 'img_out', 'img_g', 'img_rec']
         self.text_names = ['text_positive', 'text_negative']
         self.value_names = ['u_m', 'sigma_m', 'u_post', 'sigma_post', 'u_prior', 'sigma_prior']
