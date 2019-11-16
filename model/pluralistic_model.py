@@ -266,7 +266,7 @@ class Pluralistic(BaseModel):
         self.loss_word = loss_word * self.opt.lambda_match
         self.loss_sentence = loss_sentence * self.opt.lambda_match
 
-        # calculate l1 loss ofr multi-scale outputs
+        # calculate l1 loss ofr multi-scale, multi-depth-level outputs
         loss_app_rec, loss_app_g, log_PSNR_rec, log_PSNR_out = 0, 0, 0, 0
         for i, (img_rec_i, img_fake_i, img_out_i, img_real_i, mask_i) in enumerate(zip(self.img_rec, self.img_g, self.img_out, self.scale_img, self.scale_mask)):
             loss_app_rec += self.L1loss(img_rec_i, img_real_i)
@@ -274,14 +274,12 @@ class Pluralistic(BaseModel):
                 loss_app_g += self.L1loss(img_fake_i, img_real_i)
             elif self.opt.train_paths == "two":
                 loss_app_g += self.L1loss(img_fake_i*mask_i, img_real_i*mask_i)
-            # TODO: transfer tensor to image and compute PSNR
-            with torch.no_grad():
-                log_PSNR_rec += util.PSNR(util.tensor_image_scale(img_rec_i.data),
-                                              util.tensor_image_scale(img_real_i.data))
-                log_PSNR_out += util.PSNR(util.tensor_image_scale(img_out_i.data),
-                                            util.tensor_image_scale(img_real_i.data))
-        self.log_PSNR_rec = log_PSNR_rec / self.opt.batchSize
-        self.log_PSNR_out = log_PSNR_out / self.opt.batchSize
+        # TODO: transfer tensor to image and compute PSNR
+        with torch.no_grad():
+            self.log_PSNR_rec = torch.mean(util.PSNR_batch(util.tensor_image_scale(self.img_rec[-1].data),
+                                          util.tensor_image_scale(self.scale_img[-1].data)))
+            self.log_PSNR_out = torch.mean(util.PSNR_batch(util.tensor_image_scale(self.img_out[-1].data),
+                                        util.tensor_image_scale(self.scale_img[-1].data)))
         self.loss_app_rec = loss_app_rec * self.opt.lambda_rec
         self.loss_app_g = loss_app_g * self.opt.lambda_rec
 
