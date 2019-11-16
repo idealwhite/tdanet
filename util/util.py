@@ -57,7 +57,8 @@ def PSNR_batch(a, b):
     return 20 * torch.log10(255.0 / torch.sqrt(mse))
 
 def tensor_image_scale(tensor):
-    return (tensor.permute(1, 2, 0) + 1) / 2.0 * 255.0
+    '''scale the value in tensor as image'''
+    return (tensor + 1) / 2.0 * 255.0
 
 # convert a tensor into a numpy array
 def tensor2im(image_tensor, bytes=255.0, imtype=np.uint8):
