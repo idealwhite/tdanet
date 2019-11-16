@@ -275,11 +275,11 @@ class Pluralistic(BaseModel):
             elif self.opt.train_paths == "two":
                 loss_app_g += self.L1loss(img_fake_i*mask_i, img_real_i*mask_i)
         # TODO: transfer tensor to image and compute PSNR
-        with torch.no_grad():
-            self.log_PSNR_rec = torch.mean(util.PSNR_batch(util.tensor_image_scale(self.img_rec[-1].data),
-                                          util.tensor_image_scale(self.scale_img[-1].data)))
-            self.log_PSNR_out = torch.mean(util.PSNR_batch(util.tensor_image_scale(self.img_out[-1].data),
-                                        util.tensor_image_scale(self.scale_img[-1].data)))
+        # with torch.no_grad():
+        #     self.log_PSNR_rec = torch.mean(util.PSNR_batch(util.tensor_image_scale(self.img_rec[-1].data),
+        #                                   util.tensor_image_scale(self.scale_img[-1].data)))
+        #     self.log_PSNR_out = torch.mean(util.PSNR_batch(util.tensor_image_scale(self.img_out[-1].data),
+        #                                 util.tensor_image_scale(self.scale_img[-1].data)))
         self.loss_app_rec = loss_app_rec * self.opt.lambda_rec
         self.loss_app_g = loss_app_g * self.opt.lambda_rec
 
