@@ -132,8 +132,6 @@ class Pluralistic(BaseModel):
                                                     self.caption_idx_neg, self.caption_length_neg, self.text_encoder)
         self.match_labels = torch.LongTensor(range(self.opt.batchSize))
         if len(self.gpu_ids) > 0:
-            self.text_positive = self.text_positive.cuda(self.gpu_ids[0], True)
-            self.text_negative = self.text_negative.cuda(self.gpu_ids[0], True)
             self.word_embeddings = self.word_embeddings.cuda(self.gpu_ids[0], True)
             self.sentence_embedding = self.sentence_embedding.cuda(self.gpu_ids[0], True)
             self.text_mask = self.text_mask.cuda(self.gpu_ids[0], True)
