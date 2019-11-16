@@ -136,6 +136,7 @@ class Pluralistic(BaseModel):
             self.sentence_embedding = self.sentence_embedding.cuda(self.gpu_ids[0], True)
             self.text_mask = self.text_mask.cuda(self.gpu_ids[0], True)
             self.sentence_embedding_neg = self.sentence_embedding_neg.cuda(self.gpu_ids[0], True)
+            self.match_labels = self.match_labels.cuda(self.gpu_ids[0], True)
 
     def test(self):
         """Forward function used in test time"""
