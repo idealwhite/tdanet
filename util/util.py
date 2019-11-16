@@ -46,6 +46,18 @@ def lengths_to_mask(lengths, max_length, device=None):
     masks = masks.bool()
     return masks if device is None else masks.to(device)
 
+
+def PSNR(a, b):
+    max_val = torch.tensor(255).float()
+    mse = torch.mean((a.float() - b.float()) ** 2)
+    if mse == 0:
+        return torch.tensor(100)
+
+    return 20 * torch.log10(max_val / torch.sqrt(mse))
+
+def tensor_image_scale(tensor):
+    return (tensor.permute(1, 2, 0) + 1) / 2.0 * 255.0
+
 # convert a tensor into a numpy array
 def tensor2im(image_tensor, bytes=255.0, imtype=np.uint8):
     if image_tensor.dim() == 3:
@@ -56,14 +68,6 @@ def tensor2im(image_tensor, bytes=255.0, imtype=np.uint8):
 
     return image_numpy.astype(imtype)
 
-def PSNR(a, b):
-    base10 = torch.log(torch.tensor(10.0))
-    max_val = torch.tensor(255).float()
-    mse = torch.mean((a.float() - b.float()) ** 2)
-    if mse == 0:
-        return torch.tensor(0)
-
-    return max_val - 10 * torch.log(mse) / base10
 
 # conver a tensor into a numpy array
 def tensor2array(value_tensor):

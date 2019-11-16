@@ -4,7 +4,6 @@ from . import network, base_function, external_function
 from util import task, util
 import itertools
 from options.global_config import TextConfig
-from model.network import RNN_ENCODER
 import pickle
 
 class Pluralistic(BaseModel):
@@ -26,6 +25,7 @@ class Pluralistic(BaseModel):
             parser.add_argument('--lambda_rec', type=float, default=20.0, help='weight for image reconstruction loss')
             parser.add_argument('--lambda_kl', type=float, default=20.0, help='weight for kl divergence loss')
             parser.add_argument('--lambda_g', type=float, default=1.0, help='weight for generation loss')
+            parser.add_argument('--lambda_match', type=float, default=5.0, help='weight for image-text match loss')
 
         return parser
 
@@ -33,7 +33,7 @@ class Pluralistic(BaseModel):
         """Initial the pluralistic model"""
         BaseModel.__init__(self, opt)
 
-        self.loss_names = ['kl_rec', 'kl_g', 'app_rec', 'app_g', 'ad_g', 'img_d', 'ad_rec', 'img_d_rec']
+        self.loss_names = ['kl_rec', 'kl_g', 'app_rec', 'app_g', 'ad_g', 'img_d', 'ad_rec', 'img_d_rec', 'word', 'sentence']
         self.log_names = ['PSNR_rec', 'PSNR_g']
         self.visual_names = ['img_m', 'img_truth', 'img_out', 'img_g', 'img_rec']
         self.text_names = ['text_positive', 'text_negative']
@@ -52,11 +52,24 @@ class Pluralistic(BaseModel):
         self.net_D = network.define_d(ndf=32, img_f=128, layers=5, model_type='ResDis', init_type='orthogonal', gpu_ids=opt.gpu_ids)
         self.net_D_rec = network.define_d(ndf=32, img_f=128, layers=5, model_type='ResDis', init_type='orthogonal', gpu_ids=opt.gpu_ids)
 
+        text_config = TextConfig(opt.text_config)
+        self._init_language_model(text_config)
+
         if self.isTrain:
             # define the loss functions
             self.GANloss = external_function.GANLoss(opt.gan_mode)
             self.L1loss = torch.nn.L1Loss()
             self.L2loss = torch.nn.MSELoss()
+            # TODO: add text consistent loss
+            self.image_encoder = network.CNN_ENCODER(text_config.EMBEDDING_DIM)
+            state_dict = torch.load(\
+                text_config.IMAGE_ENCODER, map_location=lambda storage, loc: storage)
+            self.image_encoder.load_state_dict(state_dict)
+            self.image_encoder.eval()
+            if len(self.gpu_ids) > 0 and torch.cuda.is_available():
+                self.image_encoder.cuda()
+            base_function._freeze(self.image_encoder)
+
             # define the optimizer
             self.optimizer_G = torch.optim.Adam(itertools.chain(filter(lambda p: p.requires_grad, self.net_G.parameters()),
                         filter(lambda p: p.requires_grad, self.net_E.parameters())), lr=opt.lr, betas=(0.0, 0.999))
@@ -68,16 +81,13 @@ class Pluralistic(BaseModel):
         # load the pretrained model and schedulers
         self.setup(opt)
 
-        text_config = TextConfig(opt.text_config)
-        self._init_language_model(text_config)
-
     def _init_language_model(self, text_config):
         x = pickle.load(open(text_config.VOCAB, 'rb'))
         self.ixtoword = x[2]
         self.wordtoix = x[3]
 
         word_len = len(self.wordtoix)
-        self.text_encoder = RNN_ENCODER(word_len, nhidden=256)
+        self.text_encoder = network.RNN_ENCODER(word_len, nhidden=256)
 
         state_dict = torch.load(text_config.LANGUAGE_ENCODER, map_location=lambda storage, loc: storage)
         self.text_encoder.load_state_dict(state_dict)
@@ -120,6 +130,7 @@ class Pluralistic(BaseModel):
         self.text_mask = util.lengths_to_mask(self.caption_length, max_length=self.word_embeddings.size(-1))
         _, self.sentence_embedding_neg = util.vectorize_captions_idx_batch(
                                                     self.caption_idx_neg, self.caption_length_neg, self.text_encoder)
+        self.match_labels = torch.LongTensor(range(self.opt.batchSize))
 
     def test(self):
         """Forward function used in test time"""
@@ -196,6 +207,9 @@ class Pluralistic(BaseModel):
             self.img_g.append(img_g)
         self.img_out = (1-self.mask) * self.img_g[-1].detach() + self.mask * self.img_truth
 
+        self.region_features, self.cnn_code = self.image_encoder(self.img_rec[-1])
+
+
     def backward_D_basic(self, netD, real, fake):
         """Calculate GAN loss for the discriminator"""
         # Real
@@ -239,18 +253,31 @@ class Pluralistic(BaseModel):
         D_real = self.net_D_rec(self.img_truth)
         self.loss_ad_rec = self.L2loss(D_fake, D_real) * self.opt.lambda_g
 
+        # Text-image consistent loss
+        loss_word, _ = base_function.words_loss(self.region_features, self.word_embeddings, self.match_labels, \
+                                 self.caption_length, self.opt.batchSize)
+        loss_sentence = base_function.sent_loss(self.cnn_code, self.sentence_embedding, self.match_labels)
+        self.loss_word = loss_word * self.opt.lambda_match
+        self.loss_sentence = loss_sentence * self.opt.lambda_match
+
         # calculate l1 loss ofr multi-scale outputs
-        loss_app_rec, loss_app_g = 0, 0
-        for i, (img_rec_i, img_fake_i, img_real_i, mask_i) in enumerate(zip(self.img_rec, self.img_g, self.scale_img, self.scale_mask)):
+        loss_app_rec, loss_app_g, log_PSNR_rec, log_PSNR_out = 0, 0, 0, 0
+        for i, (img_rec_i, img_fake_i, img_out_i, img_real_i, mask_i) in enumerate(zip(self.img_rec, self.img_g, self.img_out, self.scale_img, self.scale_mask)):
             loss_app_rec += self.L1loss(img_rec_i, img_real_i)
             if self.opt.train_paths == "one":
                 loss_app_g += self.L1loss(img_fake_i, img_real_i)
             elif self.opt.train_paths == "two":
                 loss_app_g += self.L1loss(img_fake_i*mask_i, img_real_i*mask_i)
+            # TODO: transfer tensor to image and compute PSNR
+            with torch.no_grad():
+                log_PSNR_rec += util.PSNR(util.tensor_image_scale(img_rec_i.data),
+                                              util.tensor_image_scale(img_real_i.data))
+                log_PSNR_out += util.PSNR(util.tensor_image_scale(img_out_i.data),
+                                            util.tensor_image_scale(img_real_i.data))
+        self.log_PSNR_rec = log_PSNR_rec / self.opt.batchSize
+        self.log_PSNR_out = log_PSNR_out / self.opt.batchSize
         self.loss_app_rec = loss_app_rec * self.opt.lambda_rec
         self.loss_app_g = loss_app_g * self.opt.lambda_rec
-        self.log_PSNR_rec = 20*torch.log(255/torch.sqrt(self.L2loss(img_rec_i, img_real_i).detach()))
-        self.log_PSNR_g = 20*torch.log(255/torch.sqrt(self.L2loss(img_fake_i, img_real_i).detach()))
 
         # if one path during the training, just calculate the loss for generation path
         if self.opt.train_paths == "one":
