@@ -71,7 +71,7 @@ class BaseModel():
             for name in outputs_names:
                 if name in self.visual_names:
                     out = getattr(self, name)
-                    psnr = util.PSNR(util.tensor2im(out[-1]), util.tensor2im(truth[-1]))
+                    psnr = util.PSNR(util.tensor2im(out[-1].data), util.tensor2im(truth[-1].data))
                     errors_ret['psnr_'+name] = psnr
 
         return errors_ret
