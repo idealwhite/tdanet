@@ -22,9 +22,10 @@ class Pluralistic(BaseModel):
 
         if is_train:
             parser.add_argument('--train_paths', type=str, default='two', help='training strategies with one path or two paths')
-            parser.add_argument('--lambda_rec', type=float, default=20.0, help='weight for image reconstruction loss')
+            parser.add_argument('--lambda_rec_l1', type=float, default=20.0, help='weight for image reconstruction loss')
+            parser.add_argument('--lambda_gen_l1', type=float, default=20.0, help='weight for image reconstruction loss')
             parser.add_argument('--lambda_kl', type=float, default=20.0, help='weight for kl divergence loss')
-            parser.add_argument('--lambda_g', type=float, default=1.0, help='weight for generation loss')
+            parser.add_argument('--lambda_gan', type=float, default=1.0, help='weight for generation loss')
             parser.add_argument('--lambda_match', type=float, default=5.0, help='weight for image-text match loss')
 
         return parser
@@ -253,12 +254,12 @@ class Pluralistic(BaseModel):
         base_function._freeze(self.net_D, self.net_D_rec)
         # g loss fake
         D_fake = self.net_D(self.img_g[-1])
-        self.loss_gan_g = self.GANloss(D_fake, True, False) * self.opt.lambda_g
+        self.loss_gan_g = self.GANloss(D_fake, True, False) * self.opt.lambda_gan
 
         # rec loss fake
         D_fake = self.net_D_rec(self.img_rec[-1])
         D_real = self.net_D_rec(self.img_truth)
-        self.loss_ad_l2_rec = self.L2loss(D_fake, D_real) * self.opt.lambda_g
+        self.loss_ad_l2_rec = self.L2loss(D_fake, D_real) * self.opt.lambda_gan
 
         # Text-image consistent loss
         loss_sentence = base_function.sent_loss(self.cnn_code, self.sentence_embedding, self.match_labels)
@@ -276,8 +277,8 @@ class Pluralistic(BaseModel):
             elif self.opt.train_paths == "two":
                 loss_l1_g += self.L1loss(img_fake_i*mask_i, img_real_i*mask_i)
 
-        self.loss_l1_rec = loss_l1_rec * self.opt.lambda_rec
-        self.loss_l1_g = loss_l1_g * self.opt.lambda_rec
+        self.loss_l1_rec = loss_l1_rec * self.opt.lambda_rec_l1
+        self.loss_l1_g = loss_l1_g * self.opt.lambda_gen_l1
 
         # if one path during the training, just calculate the loss for generation path
         if self.opt.train_paths == "one":
