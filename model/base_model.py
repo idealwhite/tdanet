@@ -65,9 +65,15 @@ class BaseModel():
             if isinstance(name, str):
                 errors_ret[name] = getattr(self, 'loss_' + name).item()
 
-        for name in self.log_names:
-            if isinstance(name, str):
-                errors_ret[name] = getattr(self, 'log_' + name).item()
+        if 'img_truth' in self.visual_names:
+            truth = getattr(self, 'img_truth')
+            outputs_names = ['img_out', 'img_g', 'img_rec']
+            for name in outputs_names:
+                if name in self.visual_names:
+                    out = getattr(self, name)
+                    psnr = util.PSNR(util.tensor2im(out), util.tensor2im(truth))
+                    errors_ret['psnr_'+name] = psnr
+
         return errors_ret
 
     def get_current_visuals(self):

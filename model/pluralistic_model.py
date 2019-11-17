@@ -33,8 +33,8 @@ class Pluralistic(BaseModel):
         """Initial the pluralistic model"""
         BaseModel.__init__(self, opt)
 
-        self.loss_names = ['kl_rec', 'kl_g', 'app_rec', 'app_g', 'ad_g', 'img_d', 'ad_rec', 'img_d_rec', 'word', 'sentence']
-        self.log_names = []#'PSNR_rec', 'PSNR_g']
+        self.loss_names = ['kl_rec', 'kl_g', 'l1_rec', 'l1_g', 'gan_g', 'dis_img', 'ad_l2_rec', 'dis_img_rec', 'word', 'sentence']
+        self.log_names = []
         self.visual_names = ['img_m', 'img_truth', 'img_out', 'img_g', 'img_rec']
         self.text_names = ['text_positive', 'text_negative']
         self.value_names = ['u_m', 'sigma_m', 'u_post', 'sigma_post', 'u_prior', 'sigma_prior']
@@ -60,7 +60,7 @@ class Pluralistic(BaseModel):
             self.GANloss = external_function.GANLoss(opt.gan_mode)
             self.L1loss = torch.nn.L1Loss()
             self.L2loss = torch.nn.MSELoss()
-            # TODO: add text consistent loss
+
             self.image_encoder = network.CNN_ENCODER(text_config.EMBEDDING_DIM)
             state_dict = torch.load(\
                 text_config.IMAGE_ENCODER, map_location=lambda storage, loc: storage)
@@ -137,6 +137,7 @@ class Pluralistic(BaseModel):
             self.text_mask = self.text_mask.cuda(self.gpu_ids[0], True)
             self.sentence_embedding_neg = self.sentence_embedding_neg.cuda(self.gpu_ids[0], True)
             self.match_labels = self.match_labels.cuda(self.gpu_ids[0], True)
+        # TODO: add usage of text input
 
     def test(self):
         """Forward function used in test time"""
@@ -238,8 +239,8 @@ class Pluralistic(BaseModel):
     def backward_D(self):
         """Calculate the GAN loss for the discriminators"""
         base_function._unfreeze(self.net_D, self.net_D_rec)
-        self.loss_img_d = self.backward_D_basic(self.net_D, self.img_truth, self.img_g[-1])
-        self.loss_img_d_rec = self.backward_D_basic(self.net_D_rec, self.img_truth, self.img_rec[-1])
+        self.loss_dis_img = self.backward_D_basic(self.net_D, self.img_truth, self.img_g[-1])
+        self.loss_dis_img_rec = self.backward_D_basic(self.net_D_rec, self.img_truth, self.img_rec[-1])
 
     def backward_G(self):
         """Calculate training loss for the generator"""
@@ -252,12 +253,12 @@ class Pluralistic(BaseModel):
         base_function._freeze(self.net_D, self.net_D_rec)
         # g loss fake
         D_fake = self.net_D(self.img_g[-1])
-        self.loss_ad_g = self.GANloss(D_fake, True, False) * self.opt.lambda_g
+        self.loss_gan_g = self.GANloss(D_fake, True, False) * self.opt.lambda_g
 
         # rec loss fake
         D_fake = self.net_D_rec(self.img_rec[-1])
         D_real = self.net_D_rec(self.img_truth)
-        self.loss_ad_rec = self.L2loss(D_fake, D_real) * self.opt.lambda_g
+        self.loss_ad_l2_rec = self.L2loss(D_fake, D_real) * self.opt.lambda_g
 
         # Text-image consistent loss
         loss_sentence = base_function.sent_loss(self.cnn_code, self.sentence_embedding, self.match_labels)
@@ -267,32 +268,27 @@ class Pluralistic(BaseModel):
         self.loss_sentence = loss_sentence * self.opt.lambda_match
 
         # calculate l1 loss ofr multi-scale, multi-depth-level outputs
-        loss_app_rec, loss_app_g, log_PSNR_rec, log_PSNR_out = 0, 0, 0, 0
+        loss_l1_rec, loss_l1_g, log_PSNR_rec, log_PSNR_out = 0, 0, 0, 0
         for i, (img_rec_i, img_fake_i, img_out_i, img_real_i, mask_i) in enumerate(zip(self.img_rec, self.img_g, self.img_out, self.scale_img, self.scale_mask)):
-            loss_app_rec += self.L1loss(img_rec_i, img_real_i)
+            loss_l1_rec += self.L1loss(img_rec_i, img_real_i)
             if self.opt.train_paths == "one":
-                loss_app_g += self.L1loss(img_fake_i, img_real_i)
+                loss_l1_g += self.L1loss(img_fake_i, img_real_i)
             elif self.opt.train_paths == "two":
-                loss_app_g += self.L1loss(img_fake_i*mask_i, img_real_i*mask_i)
-        # TODO: transfer tensor to image and compute PSNR
-        # with torch.no_grad():
-        #     self.log_PSNR_rec = torch.mean(util.PSNR_batch(util.tensor_image_scale(self.img_rec[-1].data),
-        #                                   util.tensor_image_scale(self.scale_img[-1].data)))
-        #     self.log_PSNR_out = torch.mean(util.PSNR_batch(util.tensor_image_scale(self.img_out[-1].data),
-        #                                 util.tensor_image_scale(self.scale_img[-1].data)))
-        self.loss_app_rec = loss_app_rec * self.opt.lambda_rec
-        self.loss_app_g = loss_app_g * self.opt.lambda_rec
+                loss_l1_g += self.L1loss(img_fake_i*mask_i, img_real_i*mask_i)
+
+        self.loss_l1_rec = loss_l1_rec * self.opt.lambda_rec
+        self.loss_l1_g = loss_l1_g * self.opt.lambda_rec
 
         # if one path during the training, just calculate the loss for generation path
         if self.opt.train_paths == "one":
-            self.loss_app_rec = self.loss_app_rec * 0
-            self.loss_ad_rec = self.loss_ad_rec * 0
+            self.loss_l1_rec = self.loss_l1_rec * 0
+            self.loss_ad_l2_rec = self.loss_ad_l2_rec * 0
             self.loss_kl_rec = self.loss_kl_rec * 0
 
         total_loss = 0
 
         for name in self.loss_names:
-            if name != 'img_d' and name != 'img_d_rec':
+            if name != 'dis_img' and name != 'dis_img_rec':
                 total_loss += getattr(self, "loss_" + name)
 
         total_loss.backward()

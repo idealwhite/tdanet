@@ -47,14 +47,11 @@ def lengths_to_mask(lengths, max_length, device=None):
     return masks if device is None else masks.to(device)
 
 
-def PSNR_batch(a, b):
-    '''compute PSNR for a and b image batch'''
-    batch_size = len(a)
-    a = a.view(batch_size, -1)
-    b = b.view(batch_size, -1)
-    mse = torch.mean((a.float() - b.float()) ** 2, dim=-1, keepdim=True) + 1e-5
+def PSNR(a, b):
+    '''compute PSNR for a and b image'''
+    mse = np.mean((a - b) ** 2) + 1e-5
 
-    return 20 * torch.log10(255.0 / torch.sqrt(mse))
+    return 20 * np.log10(255.0 / np.sqrt(mse))
 
 def tensor_image_scale(tensor):
     '''scale the value in tensor as image'''
