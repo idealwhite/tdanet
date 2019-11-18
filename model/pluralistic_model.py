@@ -240,7 +240,9 @@ class Pluralistic(BaseModel):
     def backward_D(self):
         """Calculate the GAN loss for the discriminators"""
         base_function._unfreeze(self.net_D, self.net_D_rec)
-        self.loss_dis_img = self.backward_D_basic(self.net_D, self.img_truth, self.img_g[-1])
+        ## Note: changed gen path gan loss to rec path
+        # self.loss_dis_img = self.backward_D_basic(self.net_D, self.img_truth, self.img_g[-1])
+        self.loss_dis_img = self.backward_D_basic(self.net_D, self.img_truth, self.img_rec[-1])
         self.loss_dis_img_rec = self.backward_D_basic(self.net_D_rec, self.img_truth, self.img_rec[-1])
 
     def backward_G(self):
@@ -253,7 +255,10 @@ class Pluralistic(BaseModel):
         # generator adversarial loss
         base_function._freeze(self.net_D, self.net_D_rec)
         # g loss fake
-        D_fake = self.net_D(self.img_g[-1])
+        ## Note: changed gen path gan loss to rec path
+        # D_fake = self.net_D(self.img_g[-1])
+        # self.loss_gan_g = self.GANloss(D_fake, True, False) * self.opt.lambda_gan
+        D_fake = self.net_D(self.img_rec[-1])
         self.loss_gan_g = self.GANloss(D_fake, True, False) * self.opt.lambda_gan
 
         # rec loss fake

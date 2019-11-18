@@ -49,7 +49,7 @@ def lengths_to_mask(lengths, max_length, device=None):
 
 def PSNR(a, b):
     '''compute PSNR for a and b image'''
-    mse = np.mean((a - b) ** 2) + 1e-5
+    mse = np.mean((a - b) ** 2) + 1e-8
 
     return 20 * np.log10(255.0 / np.sqrt(mse))
 

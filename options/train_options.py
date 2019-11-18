@@ -9,6 +9,7 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--niter', type=int, default=5000000, help='# of iter with initial learning rate')
         parser.add_argument('--niter_decay', type=int, default=0, help='# of iter to decay learning rate to zero')
         parser.add_argument('--continue_train', action='store_true', help='continue training: load the latest model')
+        parser.add_argument('--valid_file', type=str, default='/data/dataset/valid', help='valid dataset')
 
         # learning rate and loss weight
         parser.add_argument('--lr_policy', type=str, default='lambda', help='learning rate policy[lambda|step|plateau]')
