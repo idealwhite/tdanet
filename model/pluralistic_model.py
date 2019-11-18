@@ -276,7 +276,7 @@ class Pluralistic(BaseModel):
         # calculate l1 loss ofr multi-scale, multi-depth-level outputs
         loss_l1_rec, loss_l1_g, log_PSNR_rec, log_PSNR_out = 0, 0, 0, 0
         for i, (img_rec_i, img_fake_i, img_out_i, img_real_i, mask_i) in enumerate(zip(self.img_rec, self.img_g, self.img_out, self.scale_img, self.scale_mask)):
-            loss_l1_rec += self.L1loss(img_rec_i * (1-mask_i), img_real_i * (1-mask_i))
+            loss_l1_rec += self.L1loss(img_rec_i, img_real_i)
             if self.opt.train_paths == "one":
                 loss_l1_g += self.L1loss(img_fake_i, img_real_i)
             elif self.opt.train_paths == "two":
