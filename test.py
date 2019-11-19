@@ -17,6 +17,8 @@ if __name__=='__main__':
     # create a visualizer
     visualizer = visualizer.Visualizer(opt)
 
-    for i, data in enumerate(islice(dataset, opt.how_many)):
+    for i, data in enumerate(dataset):
+        if i > opt.how_many:
+            break
         model.set_input(data)
         model.test()
