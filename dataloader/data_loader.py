@@ -48,10 +48,9 @@ class CreateDataset(data.Dataset):
         # load mask
         mask = self.load_mask(img, index)
 
-        caption_idx, caption_len, negative_caption_idx, negative_caption_len = self._load_text_idx(index)
+        caption_idx, caption_len= self._load_text_idx(index)
         return {'img': img, 'img_path': img_path, 'mask': mask, \
-                'caption_idx' : torch.Tensor(caption_idx).long(), 'caption_len':caption_len, \
-                'negative_caption_idx': torch.Tensor(negative_caption_idx).long(), 'negative_caption_len':negative_caption_len}
+                'caption_idx' : torch.Tensor(caption_idx).long(), 'caption_len':caption_len}
 
     def __len__(self):
         return self.img_size
@@ -73,29 +72,27 @@ class CreateDataset(data.Dataset):
         img_name = os.path.basename(img_name)
         captions = self.captions[img_name]
         caption = captions[caption_index_of_image] if type(captions) == list else captions
-        if self.opt.isTrain:
-            image_category = self.images_category[img_name]
-            # get negative category
-            alternate_category = list(self.category_images_train.keys())
-            alternate_category.remove(image_category)
-            negative_category_id = random.randint(0, len(alternate_category)-1)
-            negative_category = alternate_category[negative_category_id]
-            # get negative image
-            negative_image_id = random.randint(0, len(self.category_images_train[negative_category])-1)
-            negative_image = self.category_images_train[negative_category][negative_image_id]
-            # get negative caption
-            negative_captions = self.captions[negative_image]
-            negative_caption = negative_captions[random.randint(0,len(negative_captions)-1)] \
-                                                if type(negative_captions) == list else negative_captions
-            negative_caption_idx, negative_caption_len = util._caption_to_idx(\
-                                                self.wordtoix, negative_caption, self.max_length)
-        else:
-            negative_caption_idx, negative_caption_len = None, None
+        # if self.opt.isTrain:
+        #     image_category = self.images_category[img_name]
+        #     # get negative category
+        #     alternate_category = list(self.category_images_train.keys())
+        #     alternate_category.remove(image_category)
+        #     negative_category_id = random.randint(0, len(alternate_category)-1)
+        #     negative_category = alternate_category[negative_category_id]
+        #     # get negative image
+        #     negative_image_id = random.randint(0, len(self.category_images_train[negative_category])-1)
+        #     negative_image = self.category_images_train[negative_category][negative_image_id]
+        #     # get negative caption
+        #     negative_captions = self.captions[negative_image]
+        #     negative_caption = negative_captions[random.randint(0,len(negative_captions)-1)] \
+        #                                         if type(negative_captions) == list else negative_captions
+        #     negative_caption_idx, negative_caption_len = util._caption_to_idx(\
+        #                                         self.wordtoix, negative_caption, self.max_length)
+        # else:
+        #     negative_caption_idx, negative_caption_len = None, None
         caption_idx, caption_len = util._caption_to_idx(self.wordtoix, caption, self.max_length)
 
-        if self.debug == 1 and self.opt.isTrain:
-            caption_idx, negative_caption_idx = caption, negative_caption
-        return caption_idx, caption_len, negative_caption_idx, negative_caption_len
+        return caption_idx, caption_len
 
     def load_mask(self, img, index):
         """Load different mask types for training and testing"""

@@ -37,7 +37,7 @@ class Pluralistic(BaseModel):
         self.loss_names = ['kl_rec', 'kl_g', 'l1_rec', 'l1_g', 'gan_g', 'dis_img', 'ad_l2_rec', 'dis_img_rec', 'word', 'sentence']
         self.log_names = []
         self.visual_names = ['img_m', 'img_truth', 'img_out', 'img_g', 'img_rec']
-        self.text_names = ['text_positive', 'text_negative']
+        self.text_names = ['text_positive']
         self.value_names = ['u_m', 'sigma_m', 'u_post', 'sigma_post', 'u_prior', 'sigma_prior']
         self.model_names = ['E', 'G', 'D', 'D_rec']
         self.distribution = []
@@ -105,8 +105,6 @@ class Pluralistic(BaseModel):
         self.mask = input['mask']
         self.caption_idx = input['caption_idx']
         self.caption_length = input['caption_len']
-        self.caption_idx_neg = input['negative_caption_idx']
-        self.caption_length_neg = input['negative_caption_len']
 
         if len(self.gpu_ids) > 0:
             self.img = self.img.cuda(self.gpu_ids[0], True)
@@ -124,13 +122,9 @@ class Pluralistic(BaseModel):
         # About text stuff
         self.text_positive = util.idx_to_caption(\
                                     self.ixtoword, self.caption_idx[-1].tolist(), self.caption_length[-1].item())
-        self.text_negative = util.idx_to_caption(\
-                                    self.ixtoword, self.caption_idx_neg[-1].tolist(), self.caption_length_neg[-1].item())
         self.word_embeddings, self.sentence_embedding = util.vectorize_captions_idx_batch(
                                                     self.caption_idx, self.caption_length, self.text_encoder)
         self.text_mask = util.lengths_to_mask(self.caption_length, max_length=self.word_embeddings.size(-1))
-        _, self.sentence_embedding_neg = util.vectorize_captions_idx_batch(
-                                                    self.caption_idx_neg, self.caption_length_neg, self.text_encoder)
         self.match_labels = torch.LongTensor(range(self.opt.batchSize))
         if len(self.gpu_ids) > 0:
             self.word_embeddings = self.word_embeddings.cuda(self.gpu_ids[0], True)
