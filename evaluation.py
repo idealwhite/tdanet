@@ -9,22 +9,22 @@ import shutil
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description='Evaluation ont the dataset')
-parser.add_argument('--gt_path', type = str, default='dataset/image_painting/imagenet_test.txt',
+parser.add_argument('--ground_truth_path', type = str, default='dataset/image_painting/imagenet_test.txt',
                     help = 'path to original particular solutions')
 parser.add_argument('--save_path', type = str, default='imagenet/center',
                     help='path to save the test dataset')
-parser.add_argument('--batch_test', type=int, default=1000,
+parser.add_argument('--batch_test', type=int, default=32,
                     help='how many images to load for each test, just like batch')
 args = parser.parse_args()
 
 
-def compute_errors(gt, pre):
+def compute_errors(ground_truth, pre):
 
     # l1 loss
-    l1 = np.mean(np.abs(gt-pre))
+    l1 = np.mean(np.abs(ground_truth-pre))
 
     # PSNR
-    mse = np.mean((gt - pre) ** 2)
+    mse = np.mean((ground_truth - pre) ** 2)
     if mse == 0:
         PSNR = 100
     else:
@@ -41,9 +41,9 @@ def compute_errors(gt, pre):
 
 if __name__ == "__main__":
 
-    gt_paths, gt_size = make_dataset(args.gt_path)
+    ground_truth_paths, ground_truth_size = make_dataset(args.ground_truth_path)
 
-    iters = int(gt_size/args.batch_test)
+    iters = int(ground_truth_size/args.batch_test)
 
     l1_loss = np.zeros(iters, np.float32)
     PSNR = np.zeros(iters, np.float32)
@@ -58,12 +58,12 @@ if __name__ == "__main__":
 
         for j in range(args.batch_test):
             index = num+j
-            gt_image = Image.open(gt_paths[index]).resize([256,256]).convert('RGB')
-            gt_numpy = np.array(gt_image).astype(np.float32)
+            ground_truth_image = Image.open(ground_truth_paths[index]).resize([256,256]).convert('RGB')
+            ground_truth_numpy = np.array(ground_truth_image).astype(np.float32)
             l1_sample = 1000
             PSNR_sample = 0
             TV_sample = 1000
-            name = gt_paths[index].split('/')[-1].split("truth")[0]+"*"
+            name = ground_truth_paths[index].split('/')[-1].split("truth")[0]+"*"
             pre_paths = sorted(glob.glob(os.path.join(args.save_path, name)))
             num_image_files = len(pre_paths)
 
@@ -72,7 +72,7 @@ if __name__ == "__main__":
                 try:
                     pre_image = Image.open(pre_paths[index2]).resize([256,256]).convert('RGB')
                     pre_numpy = np.array(pre_image).astype(np.float32)
-                    l1_temp, PSNR_temp, TV_temp = compute_errors(gt_numpy, pre_numpy)
+                    l1_temp, PSNR_temp, TV_temp = compute_errors(ground_truth_numpy, pre_numpy)
                     # select the best results for the errors estimation
                     if l1_temp - PSNR_temp + TV_temp < l1_sample - PSNR_sample + TV_sample:
                         l1_sample, PSNR_sample, TV_sample = l1_temp, PSNR_temp, TV_temp

@@ -3,6 +3,7 @@ from dataloader import data_loader
 from model import create_model
 from util import visualizer
 from itertools import islice
+import os
 
 if __name__=='__main__':
     # get testing options
@@ -22,3 +23,4 @@ if __name__=='__main__':
             break
         model.set_input(data)
         model.test()
+    os.system('ls '+opt.result_dir+'/*_truth.png > eval'+opt.name+'.flist')
