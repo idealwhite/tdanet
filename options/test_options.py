@@ -5,7 +5,6 @@ class TestOptions(BaseOptions):
     def initialize(self,  parser):
         parser = BaseOptions.initialize(self, parser)
 
-        parser.add_argument('--ntest', type=int, default=float("inf"), help='# of the test examples')
         parser.add_argument('--results_dir', type=str, default='./results/', help='saves results here')
         parser.add_argument('--how_many', type=int, default=200, help='how many test images to run')
         parser.add_argument('--phase', type=str, default='test', help='train, val, test')
