@@ -95,7 +95,7 @@ class BaseModel():
             if isinstance(name, str):
                 text = getattr(self, name)
                 if isinstance(text, list):
-                    text_ret[name] = text[0]
+                    text_ret[name] = text[-1]
                 else:
                     text_ret[name] = text
         return text_ret

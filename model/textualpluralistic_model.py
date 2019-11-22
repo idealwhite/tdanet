@@ -121,7 +121,7 @@ class TextualPluralistic(BaseModel):
 
         # About text stuff
         self.text_positive = util.idx_to_caption(\
-                                    self.ixtoword, self.caption_idx[-1].tolist(), self.caption_length[-1].item())
+                                    self.ixtoword, self.caption_idx[0].tolist(), self.caption_length[0].item())
         self.word_embeddings, self.sentence_embedding = util.vectorize_captions_idx_batch(
                                                     self.caption_idx, self.caption_length, self.text_encoder)
         self.text_mask = util.lengths_to_mask(self.caption_length, max_length=self.word_embeddings.size(-1))
