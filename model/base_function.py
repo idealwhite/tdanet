@@ -459,7 +459,7 @@ class ImageTextAttention(nn.Module):
             attn.data.masked_fill_(mask.data, -float('inf'))
 
         attn = self.sm(attn)  # Eq. (2)
-        attn[attn != attn] = 0
+        attn.data.masked_fill_(attn != attn, 0)
         # --> batch x image_L x text_L
         attn = attn.view(batch_size, image_L, text_L)
         # --> batch x text_L x image_L
