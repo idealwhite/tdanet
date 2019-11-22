@@ -35,8 +35,7 @@ if __name__ == '__main__':
 
             # display images on visdom and save images
             if total_iteration % opt.display_freq == 0:
-                visualizer.display_current_results(model.get_current_visuals(), epoch)
-                visualizer.display_current_text(model.get_current_text())
+                visualizer.display_current_results(model.get_current_visuals(), model.get_current_text(), epoch)
                 visualizer.plot_current_distribution(model.get_current_dis())
 
             # print training loss and save logging information to the disk

@@ -29,7 +29,7 @@ class Visualizer():
             log_file.write('================ Training Loss (%s) ================\n' % now)
 
     # |visuals|: dictionary of images to display or save
-    def display_current_results(self, visuals, epoch):
+    def display_current_results(self, visuals, text, epoch):
         if self.display_id > 0: # show images in the browser
             if self.display_single_pane_ncols > 0:
                 h, w = next(iter(visuals.values())).shape[:2]
@@ -71,6 +71,9 @@ class Visualizer():
                     self.vis.image(image_numpy.transpose([2,0,1]), opts=dict(title=label),
                                        win=self.display_id + idx)
                     idx += 1
+
+        for key, value in text.items():
+            self.vis.text(value, win=key, opts=dict(title=key))
 
         if self.use_html: # save images to a html file
             for label, image_numpy in visuals.items():
@@ -132,10 +135,6 @@ class Visualizer():
             opts=dict(legend=name),
             win=self.display_id+30
         )
-
-    def display_current_text(self, text):
-        for key, value in text.items():
-            self.vis.text(value, win=key, opts=dict(title=key))
 
     # errors: same format as |errors| of plotCurrentErrors
     def print_current_errors(self, epoch, i, errors, t):
