@@ -48,7 +48,7 @@ class TextualPluralistic(BaseModel):
                                       init_type='orthogonal', gpu_ids=opt.gpu_ids)
         self.net_G = network.define_textual_g(ngf=32, z_nc=256, img_f=256, L=0, layers=5, output_scale=opt.output_scale,
                                       norm='instance', activation='LeakyReLU', init_type='orthogonal', gpu_ids=opt.gpu_ids)
-        self.word_attention = network.ImageTextAttention(256, 256)
+        self.word_attention = network.define_textual_attention(256, 256, init_type='orthogonal', gpu_ids=opt.gpu_ids)
         # define the discriminator model
         self.net_D = network.define_d(ndf=32, img_f=128, layers=5, model_type='ResDis', init_type='orthogonal', gpu_ids=opt.gpu_ids)
         self.net_D_rec = network.define_d(ndf=32, img_f=128, layers=5, model_type='ResDis', init_type='orthogonal', gpu_ids=opt.gpu_ids)

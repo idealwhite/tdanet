@@ -45,6 +45,9 @@ def define_d(input_nc=3, ndf=64, img_f=512, layers=6, norm='none', activation='L
 
     return init_net(net, init_type, activation, gpu_ids)
 
+def define_textual_attention(image_dim, text_dim, init_type='orthogonal', gpu_ids=[]):
+    net = ImageTextAttention(idf=image_dim, cdf=text_dim)
+    return init_net(net, init_type, gpu_ids=gpu_ids)
 
 #############################################################################################################
 # Network structure
