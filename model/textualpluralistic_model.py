@@ -125,7 +125,7 @@ class TextualPluralistic(BaseModel):
         self.word_embeddings, self.sentence_embedding = util.vectorize_captions_idx_batch(
                                                     self.caption_idx, self.caption_length, self.text_encoder)
         self.text_mask = util.lengths_to_mask(self.caption_length, max_length=self.word_embeddings.size(-1))
-        self.match_labels = torch.LongTensor(range(self.opt.batchSize))
+        self.match_labels = torch.LongTensor(range(len(self.img_m)))
         if len(self.gpu_ids) > 0:
             self.word_embeddings = self.word_embeddings.cuda(self.gpu_ids[0], True)
             self.sentence_embedding = self.sentence_embedding.cuda(self.gpu_ids[0], True)

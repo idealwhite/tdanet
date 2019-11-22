@@ -446,7 +446,7 @@ class ImageTextAttention(nn.Module):
 
         if image_mask is not None:
             # in img_mask, 0 is masked, so here we inverse the mask value
-            image_mask = torch.logical_not(image_mask.bool())
+            image_mask = (1-image_mask).bool()#torch.logical_not(image_mask.bool())
             image_mask = image_mask.view(-1, image_L, 1).repeat(1, 1, text_L)
 
             attn.data.masked_fill_(image_mask.data, -float('inf'))
