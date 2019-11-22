@@ -548,7 +548,7 @@ def cosine_similarity(x1, x2, dim=1, eps=1e-8):
     w12 = torch.sum(x1 * x2, dim)
     w1 = torch.norm(x1, 2, dim)
     w2 = torch.norm(x2, 2, dim)
-    return (w12 / (w1 * w2).clamp(min=eps)).squeeze()
+    return (w12 / (w1 * w2).clamp(min=eps))
 
 
 def sent_loss(cnn_code, rnn_code, labels, eps=1e-8, smooth_gama3=10.0):
@@ -567,7 +567,7 @@ def sent_loss(cnn_code, rnn_code, labels, eps=1e-8, smooth_gama3=10.0):
     scores0 = scores0 / norm0.clamp(min=eps) * smooth_gama3
 
     # --> batch_size x batch_size
-    scores0 = scores0.squeeze()
+    scores0 = scores0.squeeze(0)
 
     scores1 = scores0.transpose(0, 1)
     if labels is not None:
