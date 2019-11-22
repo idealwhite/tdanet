@@ -399,7 +399,7 @@ class Auto_Attn(nn.Module):
         return out, attention
 
 
-class GlobalAttentionGeneral(nn.Module):
+class ImageTextAttention(nn.Module):
     """
     Global attention takes a matrix and a query metrix.
     Based on each query vector q, it computes a parameterized convex combination of the matrix
@@ -419,11 +419,86 @@ class GlobalAttentionGeneral(nn.Module):
     http://www.aclweb.org/anthology/D15-1166
     """
     def __init__(self, idf, cdf):
+        super(ImageTextAttention, self).__init__()
+        self.conv_image = conv1x1(idf, cdf)
+        self.sm = nn.Softmax()
+
+    def forward(self, image, text, mask=None, image_mask=None, inverse_attention=False):
+        """
+            input: batch x idf x ih x iw (image_L=ihxiw)
+            context: batch x cdf x text_L
+        """
+        ih, iw = image.size(2), image.size(3)
+        image_L = ih * iw
+        batch_size, text_L = text.size(0), text.size(2)
+
+        # --> batch x image_L x idf
+        image = self.conv_image(image)
+        image_flat = image.view(batch_size, -1, image_L)
+        image_flat_T = torch.transpose(image_flat, 1, 2).contiguous()
+
+        # Get attention
+        # (batch x image_L x idf)(batch x idf x text_L)
+        # -->batch x image_L x text_L
+        attn = torch.bmm(image_flat_T, text)
+        if inverse_attention:
+            attn *= -1
+
+        if image_mask is not None:
+            # in img_mask, 0 is masked, so here we inverse the mask value
+            image_mask = image_mask.bool() * -1
+            image_mask = image_mask.view(-1, image_L, 1).repeat(1, 1, text_L)
+
+            attn.data.masked_fill_(image_mask.data, -float('inf'))
+
+        # --> batch*image_L x text_L
+        attn = attn.view(batch_size*image_L, text_L)
+        if mask is not None:
+            # batch_size x text_L --> batch_size*image_L x text_L
+            mask = mask.repeat(image_L, 1)
+            attn.data.masked_fill_(mask.data, -float('inf'))
+
+        attn = self.sm(attn)  # Eq. (2)
+        attn[attn != attn] = 0
+        # --> batch x image_L x text_L
+        attn = attn.view(batch_size, image_L, text_L)
+        # --> batch x text_L x image_L
+        attn = torch.transpose(attn, 1, 2).contiguous()
+
+        # (batch x idf x text_L)(batch x text_L x image_L)
+        # --> batch x idf x image_L
+        weightedContext = torch.bmm(text, attn)
+        weightedContext = weightedContext.view(batch_size, -1, ih, iw)
+        attn = attn.view(batch_size, -1, ih, iw)
+
+        return weightedContext
+
+class GlobalAttentionGeneral(nn.Module):
+    """
+    Global attention takes a matrix and a query metrix.
+    Based on each query vector q, it computes a parameterized convex combination of the matrix
+    based.
+    H_1 H_2 H_3 ... H_n
+      q   q   q       q
+        |  |   |       |
+          \ |   |      /
+                  .....
+              \   |  /
+                      a
+    Constructs a unit mapping.
+    $$(H_1 + H_n, q) => (a)$$
+    Where H is of `batch x n x dim` and q is of `batch x dim`.
+    References:
+    https://github.com/OpenNMT/OpenNMT-py/tree/fc23dfef1ba2f258858b2765d24565266526dc76/onmt/modules
+    http://www.aclweb.org/anthology/D15-1166
+    """
+
+    def __init__(self, idf, cdf):
         super(GlobalAttentionGeneral, self).__init__()
         self.conv_context = conv1x1(cdf, idf)
         self.sm = nn.Softmax()
 
-    def forward(self, input, context, mask=None):
+    def forward(self, input, context, mask=None, inverse_attention=False):
         """
             input: batch x idf x ih x iw (queryL=ihxiw)
             context: batch x cdf x sourceL
@@ -444,12 +519,14 @@ class GlobalAttentionGeneral(nn.Module):
         # (batch x queryL x idf)(batch x idf x sourceL)
         # -->batch x queryL x sourceL
         attn = torch.bmm(targetT, sourceT)
-        # --> batch*queryL x sourceL
-        attn = attn.view(batch_size*queryL, sourceL)
+        if inverse_attention:
+            attn *= -1
+        attn = attn.view(batch_size * queryL, sourceL)
         if mask is not None:
             # batch_size x sourceL --> batch_size*queryL x sourceL
             mask = mask.repeat(queryL, 1)
             attn.data.masked_fill_(mask.data, -float('inf'))
+
         attn = self.sm(attn)  # Eq. (2)
         # --> batch x queryL x sourceL
         attn = attn.view(batch_size, queryL, sourceL)
@@ -462,10 +539,9 @@ class GlobalAttentionGeneral(nn.Module):
         weightedContext = weightedContext.view(batch_size, -1, ih, iw)
         attn = attn.view(batch_size, -1, ih, iw)
 
-        return weightedContext, attn
+        return weightedContext
 
 # ##################Loss for matching text-image###################
-import numpy as np
 def cosine_similarity(x1, x2, dim=1, eps=1e-8):
     """Returns cosine similarity between x1 and x2, computed along dim.
     """

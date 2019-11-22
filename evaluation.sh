@@ -1,2 +1,2 @@
-python test.py --name rec-match-loss0.1 --img_file datasets/CUB_200_2011/test.flist --results_dir results/rec-match-loss0.1 --how_many 200 --mask_file datasets/CUB_200_2011/valid.flist --mask_type 3 --no_shuffle
+python test.py --name rec-match-loss0.1 --img_file datasets/CUB_200_2011/valid.flist --results_dir results/rec-match-loss0.1 --how_many 200 --mask_file datasets/CUB_200_2011/test_mask.flist --mask_type 3 --no_shuffle
 python evaluation.py --ground_truth_path eval_rec-match-loss0.1.flist --save_path ./results/rec-match-loss0.1/ --batch_test 30

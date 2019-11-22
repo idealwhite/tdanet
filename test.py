@@ -23,4 +23,4 @@ if __name__=='__main__':
             break
         model.set_input(data)
         model.test()
-    os.system('ls '+opt.results_dir+'/*_truth.png > eval'+opt.name+'.flist')
+    os.system('ls '+opt.results_dir+'/*_truth.png > eval_'+opt.name+'.flist')

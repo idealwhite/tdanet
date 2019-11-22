@@ -13,7 +13,7 @@ class BaseOptions():
     def initialize(self, parser):
         # base define
         parser.add_argument('--name', type=str, default='experiment_name', help='name of the experiment.')
-        parser.add_argument('--model', type=str, default='pluralistic', help='name of the model type. [pluralistic]')
+        parser.add_argument('--model', type=str, default='textualpluralistic', help='name of the model type. [pluralistic]')
         parser.add_argument('--mask_type', type=int, default=[1, 2], nargs='+',
                             help='mask type, 0: center mask, 1:random regular mask, '
                             '2: random irregular mask. 3: external irregular mask. [0],[1,2],[1,2,3]')
@@ -21,6 +21,7 @@ class BaseOptions():
         parser.add_argument('--which_iter', type=str, default='latest', help='which iterations to load')
         parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0, 1, 2 use -1 for CPU')
         parser.add_argument('--text_config', type=str, default='config.bird.yml', help='path to text config')
+        parser.add_argument('--output_scale', type=int, default=4, help='# of number of the output scale')
 
         # data pattern define
         parser.add_argument('--img_file', type=str, default='/data/dataset/train', help='training and testing dataset')

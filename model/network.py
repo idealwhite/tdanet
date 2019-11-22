@@ -13,6 +13,13 @@ def define_e(input_nc=3, ngf=64, z_nc=512, img_f=512, L=6, layers=5, norm='none'
 
     return init_net(net, init_type, activation, gpu_ids)
 
+def define_textual_e(input_nc=3, ngf=64, z_nc=512, img_f=512, L=6, layers=5, norm='none', activation='ReLU', use_spect=True,
+             use_coord=False, init_type='orthogonal', gpu_ids=[]):
+
+    net = TextualResEncoder(input_nc, ngf, z_nc, img_f, L, layers, norm, activation, use_spect, use_coord)
+
+    return init_net(net, init_type, activation, gpu_ids)
+
 
 def define_g(output_nc=3, ngf=64, z_nc=512, img_f=512, L=1, layers=5, norm='instance', activation='ReLU', output_scale=1,
              use_spect=True, use_coord=False, use_attn=True, init_type='orthogonal', gpu_ids=[]):
@@ -21,6 +28,12 @@ def define_g(output_nc=3, ngf=64, z_nc=512, img_f=512, L=1, layers=5, norm='inst
 
     return init_net(net, init_type, activation, gpu_ids)
 
+def define_textual_g(output_nc=3, ngf=64, z_nc=512, img_f=512, L=1, layers=5, norm='instance', activation='ReLU', output_scale=1,
+             use_spect=True, use_coord=False, use_attn=True, init_type='orthogonal', gpu_ids=[]):
+
+    net = TextualResGenerator(output_nc, ngf, z_nc, img_f, L, layers, norm, activation, output_scale, use_spect, use_coord, use_attn)
+
+    return init_net(net, init_type, activation, gpu_ids)
 
 def define_d(input_nc=3, ndf=64, img_f=512, layers=6, norm='none', activation='LeakyReLU', use_spect=True, use_coord=False,
              use_attn=True,  model_type='ResDis', init_type='orthogonal', gpu_ids=[]):
@@ -136,6 +149,119 @@ class ResEncoder(nn.Module):
 
         return distributions
 
+class TextualResEncoder(nn.Module):
+    """
+    ResNet Encoder Network
+    :param input_nc: number of channels in input
+    :param ngf: base filter channel
+    :param z_nc: latent channels
+    :param img_f: the largest feature channels
+    :param L: Number of refinements of density
+    :param layers: down and up sample layers
+    :param norm: normalization function 'instance, batch, group'
+    :param activation: activation function 'ReLU, SELU, LeakyReLU, PReLU'
+    """
+    def __init__(self, input_nc=3, ngf=32, z_nc=256, img_f=256, L=6, layers=5, norm='none', activation='ReLU',
+                 use_spect=True, use_coord=False):
+        super(TextualResEncoder, self).__init__()
+
+        self.layers = layers
+        self.z_nc = z_nc
+        self.L = L
+
+        norm_layer = get_norm_layer(norm_type=norm)
+        nonlinearity = get_nonlinearity_layer(activation_type=activation)
+        # encoder part
+        self.block0 = ResBlockEncoderOptimized(input_nc, ngf, norm_layer, nonlinearity, use_spect, use_coord)
+
+        mult = 1
+        for i in range(layers-1):
+            mult_prev = mult
+            mult = min(2 ** (i + 2), img_f // ngf)
+            block = ResBlock(ngf * mult_prev, ngf * mult, ngf * mult_prev, norm_layer, nonlinearity, 'down', use_spect, use_coord)
+            setattr(self, 'encoder' + str(i), block)
+
+        # inference part
+        for i in range(self.L):
+            block = ResBlock(ngf * mult, ngf * mult, ngf *mult, norm_layer, nonlinearity, 'none', use_spect, use_coord)
+            setattr(self, 'infer_prior' + str(i), block)
+
+        # For textual, only change input and hidden dimension, z_nc is set when called.
+        self.posterior = ResBlock(ngf * mult * 2, 2*z_nc, ngf * mult * 2, norm_layer, nonlinearity, 'none', use_spect, use_coord)
+        self.prior = ResBlock(ngf * mult * 2, 2*z_nc, ngf * mult * 2, norm_layer, nonlinearity, 'none', use_spect, use_coord)
+
+    def forward(self, img_m, sentence_embedding, img_c=None):
+        """
+        :param img_m: image with mask regions I_m
+        :param sentence_embedding: the sentence embedding of I
+        :param img_c: complement of I_m, the mask regions
+        :return distribution: distribution of mask regions, for training we have two paths, testing one path
+        :return feature: the conditional feature f_m, and the previous f_pre for auto context attention
+        """
+
+        if type(img_c) != type(None):
+            img = torch.cat([img_m, img_c], dim=0)
+        else:
+            img = img_m
+
+        # encoder part
+        out = self.block0(img)
+        feature = [out]
+        for i in range(self.layers-1):
+            model = getattr(self, 'encoder' + str(i))
+            out = model(out)
+            feature.append(out)
+
+        # infer part
+        # during the training, we have two paths, during the testing, we only have one paths
+        if type(img_c) != type(None):
+            distribution = self.two_paths(out, sentence_embedding)
+            return distribution, feature
+        else:
+            distribution = self.one_path(out, sentence_embedding)
+            return distribution, feature
+
+    def one_path(self, f_in, sentence_embedding):
+        """one path for baseline training or testing"""
+        f_m = f_in
+        distribution = []
+
+        # infer state
+        for i in range(self.L):
+            infer_prior = getattr(self, 'infer_prior' + str(i))
+            f_m = infer_prior(f_m)
+
+        # get distribution
+        # use sentence embedding here
+        ix, iw = f_m.size(2), f_m.size(3)
+        sentence_dim = sentence_embedding.size(1)
+        sentence_embedding_replication = sentence_embedding.view(-1, sentence_dim, 1, 1).repeat(1, 1, ix, iw)
+        f_m_sentencce = torch.cat([f_m, sentence_embedding_replication], dim=1)
+        o = self.prior(f_m_sentencce)
+        q_mu, q_std = torch.split(o, self.z_nc, dim=1)
+        distribution.append([q_mu, F.softplus(q_std)])
+
+        return distribution
+
+    def two_paths(self, f_in, sentence_embedding):
+        """two paths for the training"""
+        f_m, f_c = f_in.chunk(2)
+        distributions = []
+
+        # get distribution
+        # use sentence embedding here
+        ix, iw = f_c.size(2), f_c.size(3)
+        sentence_dim = sentence_embedding.size(1)
+        sentence_embedding_replication = sentence_embedding.view(-1, sentence_dim, 1, 1).repeat(1, 1, ix, iw)
+        f_c_sentnece = torch.cat([f_c, sentence_embedding_replication], dim=1)
+        o = self.posterior(f_c_sentnece)
+        p_mu, p_std = torch.split(o, self.z_nc, dim=1)
+
+        distribution = self.one_path(f_m, sentence_embedding)
+        distributions.append([p_mu, F.softplus(p_std), distribution[0][0], distribution[0][1]])
+
+        return distributions
+
 
 class ResGenerator(nn.Module):
     """
@@ -223,6 +349,100 @@ class ResGenerator(nn.Module):
 
         return results, attn
 
+class TextualResGenerator(nn.Module):
+    """
+    Textual ResNet Generator Network.
+    This fucking code is hard to maintenance, just list a trip of shit.
+    :param output_nc: number of channels in output
+    :param ngf: base filter channel
+    :param z_nc: latent channels
+    :param img_f: the largest feature channels
+    :param L: Number of refinements of density
+    :param layers: down and up sample layers
+    :param norm: normalization function 'instance, batch, group'
+    :param activation: activation function 'ReLU, SELU, LeakyReLU, PReLU'
+    :param output_scale: Different output scales
+    """
+    def __init__(self, output_nc=3, ngf=32, z_nc=256, img_f=256, L=0, layers=5, norm='instance', activation='ReLU',
+                 output_scale=4, use_spect=True, use_coord=False, use_attn=True):
+        super(TextualResGenerator, self).__init__()
+
+        self.layers = layers
+        self.L = L
+        self.output_scale = output_scale
+        self.use_attn = use_attn
+
+        norm_layer = get_norm_layer(norm_type=norm)
+        nonlinearity = get_nonlinearity_layer(activation_type=activation)
+        # latent z to feature
+        mult = min(2 ** (layers-1), img_f // ngf) # the upper bound is img_f filters. mult is the hidden size of filters.
+        self.generator = ResBlock(z_nc, ngf * mult, ngf * mult, None, nonlinearity, 'none', use_spect, use_coord)
+
+        # transform, actually not used in Plu model.
+        for i in range(self.L):
+            block = ResBlock(ngf * mult, ngf * mult, ngf * mult, None, nonlinearity, 'none', use_spect, use_coord)
+            setattr(self, 'generator' + str(i), block)
+
+        # decoder part
+        for i in range(layers):
+            mult_prev = mult
+            mult = min(2 ** (layers - i - 1), img_f // ngf)
+            if i > layers - output_scale:
+                # upconv = ResBlock(ngf * mult_prev + output_nc, ngf * mult, ngf * mult, norm_layer, nonlinearity, 'up', True)
+                upconv = ResBlockDecoder(ngf * mult_prev + output_nc, ngf * mult, ngf * mult, norm_layer, nonlinearity, use_spect, use_coord)
+            else:
+                # upconv = ResBlock(ngf * mult_prev, ngf * mult, ngf * mult, norm_layer, nonlinearity, 'up', True)
+                upconv = ResBlockDecoder(ngf * mult_prev , ngf * mult, ngf * mult, norm_layer, nonlinearity, use_spect, use_coord)
+            setattr(self, 'decoder' + str(i), upconv)
+            # output part
+            if i > layers - output_scale - 1:
+                outconv = Output(ngf * mult, output_nc, 3, None, nonlinearity, use_spect, use_coord)
+                setattr(self, 'out' + str(i), outconv)
+            # short+long term attention part
+            if i == 1 and use_attn:
+                attn = Auto_Attn(ngf*mult, None)
+                setattr(self, 'attn' + str(i), attn)
+            if i == 1:
+                text_transfer = ResBlock(ngf * mult * 2, ngf * mult, ngf * mult, None, nonlinearity, 'none', use_spect, use_coord)
+                setattr(self, 'text_transfer', text_transfer)
+    def forward(self, z, f_m=None, f_e=None, f_word=None, mask=None):
+        """
+        ResNet Generator Network
+        :param z: latent vector
+        :param f_m: feature of valid regions for conditional VAG-GAN
+        :param f_e: previous encoder feature for short+long term attention layer
+        :param f_word: feature from word embedding and image's attention
+        :return results: different scale generation outputs
+        """
+
+        f = self.generator(z) # [nb, 256, 8, 8]
+        for i in range(self.L):
+             generator = getattr(self, 'generator' + str(i)) # dimension not change
+             f = generator(f)
+
+        # the features come from mask regions and valid regions, we directly add them together
+        # TODO: decide wether to remove this skip connect because of the miss match of sentence embedding.
+        out = f_m + f
+        results= []
+        attn = 0
+        for i in range(self.layers):
+            model = getattr(self, 'decoder' + str(i))
+            out = model(out)
+            if i == 1 and self.use_attn:
+                # auto attention
+                model = getattr(self, 'attn' + str(i))
+                out, attn = model(out, f_e, mask)
+                # add f_word add word embedding here? or earlier?
+                model = getattr(self, 'text_transfer')
+                out = torch.cat([out, f_word], dim=1)
+                out = model(out)
+            if i > self.layers - self.output_scale - 1:
+                model = getattr(self, 'out' + str(i))
+                output = model(out)
+                results.append(output)
+                out = torch.cat([out, output], dim=1)
+
+        return results, attn
 
 class ResDiscriminator(nn.Module):
     """
