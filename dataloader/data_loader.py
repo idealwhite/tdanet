@@ -48,9 +48,10 @@ class CreateDataset(data.Dataset):
         # load mask
         mask = self.load_mask(img, index)
 
-        caption_idx, caption_len= self._load_text_idx(index)
+        caption_idx, caption_len, caption, img_name= self._load_text_idx(index)
         return {'img': img, 'img_path': img_path, 'mask': mask, \
-                'caption_idx' : torch.Tensor(caption_idx).long(), 'caption_len':caption_len}
+                'caption_idx' : torch.Tensor(caption_idx).long(), 'caption_len':caption_len,\
+                'caption_text': caption, 'image_path': img_name}
 
     def __len__(self):
         return self.img_size
@@ -92,7 +93,7 @@ class CreateDataset(data.Dataset):
         #     negative_caption_idx, negative_caption_len = None, None
         caption_idx, caption_len = util._caption_to_idx(self.wordtoix, caption, self.max_length)
 
-        return caption_idx, caption_len
+        return caption_idx, caption_len, caption, img_name
 
     def load_mask(self, img, index):
         """Load different mask types for training and testing"""
