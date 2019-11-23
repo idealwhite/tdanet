@@ -33,7 +33,8 @@ class TextualPluralistic(BaseModel):
         """Initial the pluralistic model"""
         BaseModel.__init__(self, opt)
 
-        self.loss_names = ['kl_rec', 'kl_g', 'l1_rec', 'l1_g', 'gan_g', 'dis_img', 'ad_l2_rec', 'dis_img_rec', 'word', 'sentence']
+        self.loss_names = ['kl_rec', 'kl_g', 'l1_rec', 'l1_g', 'gan_g', 'word_g', 'sentence_g',
+                           'gan_rec', 'ad_l2_rec', 'word_rec', 'sentence_rec',  'dis_img', 'dis_img_rec']
         self.log_names = []
         self.visual_names = ['img_m', 'img_truth', 'img_out', 'img_g', 'img_rec']
         self.text_names = ['text_positive']
