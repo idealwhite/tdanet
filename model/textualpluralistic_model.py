@@ -226,7 +226,8 @@ class TextualPluralistic(BaseModel):
             self.img_g.append(img_g)
         self.img_out = (1-self.mask) * self.img_g[-1].detach() + self.mask * self.img_truth
 
-        self.region_features, self.cnn_code = self.image_encoder(self.img_rec[-1])
+        self.region_features_rec, self.cnn_code_rec = self.image_encoder(self.img_rec[-1])
+        self.region_features_g, self.cnn_code_g = self.image_encoder(self.img_g[-1])
 
 
     def backward_D_basic(self, netD, real, fake):
@@ -278,11 +279,18 @@ class TextualPluralistic(BaseModel):
         self.loss_ad_l2_rec = self.L2loss(D_fake, D_real) * self.opt.lambda_gan
 
         # Text-image consistent loss
-        loss_sentence = base_function.sent_loss(self.cnn_code, self.sentence_embedding, self.match_labels)
-        loss_word, _ = base_function.words_loss(self.region_features, self.word_embeddings, self.match_labels, \
+        loss_sentence = base_function.sent_loss(self.cnn_code_rec, self.sentence_embedding, self.match_labels)
+        loss_word, _ = base_function.words_loss(self.region_features_rec, self.word_embeddings, self.match_labels, \
                                  self.caption_length, len(self.word_embeddings))
-        self.loss_word = loss_word * self.opt.lambda_match
-        self.loss_sentence = loss_sentence * self.opt.lambda_match
+        self.loss_word_rec = loss_word * self.opt.lambda_match
+        self.loss_sentence_rec = loss_sentence * self.opt.lambda_match
+
+        loss_sentence = base_function.sent_loss(self.cnn_code_g, self.sentence_embedding, self.match_labels)
+        loss_word, _ = base_function.words_loss(self.region_features_g, self.word_embeddings, self.match_labels, \
+                                 self.caption_length, len(self.word_embeddings))
+        self.loss_word_g = loss_word * self.opt.lambda_match
+        self.loss_sentence_g = loss_sentence * self.opt.lambda_match
+
 
         # calculate l1 loss ofr multi-scale, multi-depth-level outputs
         loss_l1_rec, loss_l1_g, log_PSNR_rec, log_PSNR_out = 0, 0, 0, 0
