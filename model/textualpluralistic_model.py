@@ -267,11 +267,11 @@ class TextualPluralistic(BaseModel):
         # generator adversarial loss
         base_function._freeze(self.net_D, self.net_D_rec)
         # g loss fake
-        ## Note: changed gen path gan loss to rec path
-        # D_fake = self.net_D(self.img_g[-1])
-        # self.loss_gan_g = self.GANloss(D_fake, True, False) * self.opt.lambda_gan
-        D_fake = self.net_D(self.img_rec[-1])
+        # Note: changed gen path gan loss to rec path
+        D_fake = self.net_D(self.img_g[-1])
         self.loss_gan_g = self.GANloss(D_fake, True, False) * self.opt.lambda_gan
+        D_fake = self.net_D(self.img_rec[-1])
+        self.loss_gan_rec = self.GANloss(D_fake, True, False) * self.opt.lambda_gan
 
         # rec loss fake
         D_fake = self.net_D_rec(self.img_rec[-1])
