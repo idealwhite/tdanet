@@ -213,7 +213,7 @@ class TextualPluralistic(BaseModel):
         img_mask_rec = 1 - img_mask_g
 
         weighted_word_embedding_rec = self.word_attention(\
-            f_e_rec, self.word_embeddings, mask=self.text_mask, image_mask=img_mask_rec, inverse_attention=True)
+            f_e_rec, self.word_embeddings, mask=self.text_mask, image_mask=img_mask_rec, inverse_attention=False)
         weighted_word_embedding_g = self.word_attention( \
             f_e_g, self.word_embeddings, mask=self.text_mask, image_mask=img_mask_g, inverse_attention=True)
         weighted_word_embedding = torch.cat([weighted_word_embedding_rec, weighted_word_embedding_g])
