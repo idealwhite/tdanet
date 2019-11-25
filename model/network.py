@@ -670,8 +670,8 @@ class TextualResGenerator(nn.Module):
              f = generator(f)
 
         # the features come from mask regions and valid regions, we directly add them together
-        # TODO: decide wether to remove this skip connect because of the miss match of sentence embedding.
-        out = f_m + f
+        # TOTEST: decide wether to remove this skip connect because of the miss match of sentence embedding.
+        out = f
         results= []
         attn = 0
         for i in range(self.layers):
