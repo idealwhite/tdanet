@@ -6,10 +6,10 @@ import itertools
 from options.global_config import TextConfig
 import pickle
 
-class Pluralistic(BaseModel):
+class HiddenTextualPluralistic(BaseModel):
     """This class implements the pluralistic image completion, for 256*256 resolution image inpainting"""
     def name(self):
-        return "Pluralistic Image Completion"
+        return "HiddenTextualPluralistic Image Completion"
 
     @staticmethod
     def modify_options(parser, is_train=True):
@@ -33,7 +33,8 @@ class Pluralistic(BaseModel):
         """Initial the pluralistic model"""
         BaseModel.__init__(self, opt)
 
-        self.loss_names = ['kl_rec', 'kl_g', 'l1_rec', 'l1_g', 'gan_g', 'dis_img', 'ad_l2_rec', 'dis_img_rec', 'word', 'sentence']
+        self.loss_names = ['kl_rec', 'kl_g', 'l1_rec', 'l1_g', 'gan_g', 'word_g', 'sentence_g',
+                           'gan_rec', 'ad_l2_rec', 'word_rec', 'sentence_rec',  'dis_img', 'dis_img_rec']
         self.log_names = []
         self.visual_names = ['img_m', 'img_truth', 'img_out', 'img_g', 'img_rec']
         self.text_names = ['text_positive']
@@ -44,9 +45,9 @@ class Pluralistic(BaseModel):
         self.prior_beta = opt.prior_beta
 
         # define the inpainting model
-        self.net_E = network.define_e(ngf=32, z_nc=128, img_f=128, layers=5, norm='none', activation='LeakyReLU',
-                                      init_type='orthogonal', gpu_ids=opt.gpu_ids)
-        self.net_G = network.define_g(ngf=32, z_nc=128, img_f=128, L=0, layers=5, output_scale=opt.output_scale,
+        self.net_E = network.define_att_textual_e(ngf=32, z_nc=384, img_f=256, layers=5, norm='none', activation='LeakyReLU',
+                                      init_type='orthogonal', gpu_ids=opt.gpu_ids, image_dim=256, text_dim=256)
+        self.net_G = network.define_hidden_textual_g(f_text_dim=768, ngf=32, z_nc=384, img_f=256, L=0, layers=5, output_scale=opt.output_scale,
                                       norm='instance', activation='LeakyReLU', init_type='orthogonal', gpu_ids=opt.gpu_ids)
         # define the discriminator model
         self.net_D = network.define_d(ndf=32, img_f=128, layers=5, model_type='ResDis', init_type='orthogonal', gpu_ids=opt.gpu_ids)
@@ -62,7 +63,7 @@ class Pluralistic(BaseModel):
             self.L2loss = torch.nn.MSELoss()
 
             self.image_encoder = network.CNN_ENCODER(text_config.EMBEDDING_DIM)
-            state_dict = torch.load(\
+            state_dict = torch.load(
                 text_config.IMAGE_ENCODER, map_location=lambda storage, loc: storage)
             self.image_encoder.load_state_dict(state_dict)
             self.image_encoder.eval()
@@ -112,7 +113,7 @@ class Pluralistic(BaseModel):
         # get I_m and I_c for image with mask and complement regions for training
         self.img_truth = self.img * 2 - 1
         self.img_m = self.mask * self.img_truth
-        self.img_c = self.img_truth# (1 - self.mask) * self.img_truth
+        self.img_c =  (1 - self.mask) * self.img_truth
 
         # get multiple scales image ground truth and mask for training
         self.scale_img = task.scale_pyramid(self.img_truth, self.opt.output_scale)
@@ -120,11 +121,11 @@ class Pluralistic(BaseModel):
 
         # About text stuff
         self.text_positive = util.idx_to_caption(\
-                                    self.ixtoword, self.caption_idx[-1].tolist(), self.caption_length[-1].item())
+                                    self.ixtoword, self.caption_idx[0].tolist(), self.caption_length[0].item())
         self.word_embeddings, self.sentence_embedding = util.vectorize_captions_idx_batch(
                                                     self.caption_idx, self.caption_length, self.text_encoder)
         self.text_mask = util.lengths_to_mask(self.caption_length, max_length=self.word_embeddings.size(-1))
-        self.match_labels = torch.LongTensor(range(self.opt.batchSize))
+        self.match_labels = torch.LongTensor(range(len(self.img_m)))
         if len(self.gpu_ids) > 0:
             self.word_embeddings = self.word_embeddings.cuda(self.gpu_ids[0], True)
             self.sentence_embedding = self.sentence_embedding.cuda(self.gpu_ids[0], True)
@@ -138,14 +139,17 @@ class Pluralistic(BaseModel):
         self.save_results(self.img_m, data_name='mask')
 
         # encoder process
-        distribution, f = self.net_E(self.img_m)
+        # TOTEST: adapt to word embedding, call AttTextualResEncoder
+        distribution, f, f_text = self.net_E(
+            self.img_m, self.sentence_embedding, self.word_embeddings, self.text_mask, self.mask)
         q_distribution = torch.distributions.Normal(distribution[-1][0], distribution[-1][1])
         scale_mask = task.scale_img(self.mask, size=[f[2].size(2), f[2].size(3)])
 
         # decoder process
         for i in range(self.opt.nsampling):
             z = q_distribution.sample()
-            self.img_g, attn = self.net_G(z, f_m=f[-1], f_e=f[2], mask=scale_mask.chunk(3, dim=1)[0])
+
+            self.img_g, attn = self.net_G(z, f_text, f_e=f[2], mask=scale_mask.chunk(3, dim=1)[0])
             self.img_out = (1 - self.mask) * self.img_g[-1].detach() + self.mask * self.img_m
             self.score = self.net_D(self.img_out)
             self.save_results(self.img_out, i, data_name='out')
@@ -192,12 +196,15 @@ class Pluralistic(BaseModel):
     def forward(self):
         """Run forward processing to get the inputs"""
         # encoder process
-        distribution_factors, f = self.net_E(self.img_m, self.img_c)
+        distribution_factors, f, f_text = self.net_E(
+            self.img_m, self.sentence_embedding, self.word_embeddings, self.text_mask, self.mask, self.img_c)
+
         p_distribution, q_distribution, self.kl_rec, self.kl_g = self.get_distribution(distribution_factors)
 
         # decoder process
         z, f_m, f_e, mask = self.get_G_inputs(p_distribution, q_distribution, f) # prepare inputs: img, mask, distribute
-        results, attn = self.net_G(z, f_m, f_e, mask)
+
+        results, attn = self.net_G(z, f_text, f_e, mask)
         self.img_rec = []
         self.img_g = []
         for result in results:
@@ -206,7 +213,8 @@ class Pluralistic(BaseModel):
             self.img_g.append(img_g)
         self.img_out = (1-self.mask) * self.img_g[-1].detach() + self.mask * self.img_truth
 
-        self.region_features, self.cnn_code = self.image_encoder(self.img_rec[-1])
+        self.region_features_rec, self.cnn_code_rec = self.image_encoder(self.img_rec[-1])
+        self.region_features_g, self.cnn_code_g = self.image_encoder(self.img_g[-1])
 
 
     def backward_D_basic(self, netD, real, fake):
@@ -246,11 +254,11 @@ class Pluralistic(BaseModel):
         # generator adversarial loss
         base_function._freeze(self.net_D, self.net_D_rec)
         # g loss fake
-        ## Note: changed gen path gan loss to rec path
-        # D_fake = self.net_D(self.img_g[-1])
-        # self.loss_gan_g = self.GANloss(D_fake, True, False) * self.opt.lambda_gan
-        D_fake = self.net_D(self.img_rec[-1])
+        # Note: changed gen path gan loss to rec path
+        D_fake = self.net_D(self.img_g[-1])
         self.loss_gan_g = self.GANloss(D_fake, True, False) * self.opt.lambda_gan
+        D_fake = self.net_D(self.img_rec[-1])
+        self.loss_gan_rec = self.GANloss(D_fake, True, False) * self.opt.lambda_gan
 
         # rec loss fake
         D_fake = self.net_D_rec(self.img_rec[-1])
@@ -258,11 +266,18 @@ class Pluralistic(BaseModel):
         self.loss_ad_l2_rec = self.L2loss(D_fake, D_real) * self.opt.lambda_gan
 
         # Text-image consistent loss
-        loss_sentence = base_function.sent_loss(self.cnn_code, self.sentence_embedding, self.match_labels)
-        loss_word, _ = base_function.words_loss(self.region_features, self.word_embeddings, self.match_labels, \
-                                 self.caption_length, self.opt.batchSize)
-        self.loss_word = loss_word * self.opt.lambda_match
-        self.loss_sentence = loss_sentence * self.opt.lambda_match
+        loss_sentence = base_function.sent_loss(self.cnn_code_rec, self.sentence_embedding, self.match_labels)
+        loss_word, _ = base_function.words_loss(self.region_features_rec, self.word_embeddings, self.match_labels, \
+                                 self.caption_length, len(self.word_embeddings))
+        self.loss_word_rec = loss_word * self.opt.lambda_match
+        self.loss_sentence_rec = loss_sentence * self.opt.lambda_match
+
+        loss_sentence = base_function.sent_loss(self.cnn_code_g, self.sentence_embedding, self.match_labels)
+        loss_word, _ = base_function.words_loss(self.region_features_g, self.word_embeddings, self.match_labels, \
+                                 self.caption_length, len(self.word_embeddings))
+        self.loss_word_g = loss_word * self.opt.lambda_match
+        self.loss_sentence_g = loss_sentence * self.opt.lambda_match
+
 
         # calculate l1 loss ofr multi-scale, multi-depth-level outputs
         loss_l1_rec, loss_l1_g, log_PSNR_rec, log_PSNR_out = 0, 0, 0, 0

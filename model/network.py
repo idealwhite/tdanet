@@ -1,6 +1,7 @@
 from .base_function import *
 from .external_function import SpectralNorm
 import torch.nn.functional as F
+from util import task
 
 
 ##############################################################################################################
@@ -20,6 +21,10 @@ def define_textual_e(input_nc=3, ngf=64, z_nc=512, img_f=512, L=6, layers=5, nor
 
     return init_net(net, init_type, activation, gpu_ids)
 
+def define_att_textual_e(input_nc=3, ngf=64, z_nc=512, img_f=512, L=6, layers=5, norm='none', activation='ReLU', use_spect=True,
+             use_coord=False, init_type='orthogonal', gpu_ids=[], image_dim=256, text_dim=256):
+    net = AttTextualResEncoder(input_nc, ngf, z_nc, img_f, L, layers, norm, activation, use_spect, use_coord, image_dim, text_dim)
+    return init_net(net, init_type, activation, gpu_ids)
 
 def define_g(output_nc=3, ngf=64, z_nc=512, img_f=512, L=1, layers=5, norm='instance', activation='ReLU', output_scale=1,
              use_spect=True, use_coord=False, use_attn=True, init_type='orthogonal', gpu_ids=[]):
@@ -32,6 +37,13 @@ def define_textual_g(output_nc=3, ngf=64, z_nc=512, img_f=512, L=1, layers=5, no
              use_spect=True, use_coord=False, use_attn=True, init_type='orthogonal', gpu_ids=[]):
 
     net = TextualResGenerator(output_nc, ngf, z_nc, img_f, L, layers, norm, activation, output_scale, use_spect, use_coord, use_attn)
+
+    return init_net(net, init_type, activation, gpu_ids)
+
+def define_hidden_textual_g(output_nc=3, f_text_dim=384, ngf=64, z_nc=512, img_f=512, L=1, layers=5, norm='instance', activation='ReLU', output_scale=1,
+             use_spect=True, use_coord=False, use_attn=True, init_type='orthogonal', gpu_ids=[]):
+
+    net = HiddenResGenerator(output_nc, f_text_dim, ngf, z_nc, img_f, L, layers, norm, activation, output_scale, use_spect, use_coord, use_attn)
 
     return init_net(net, init_type, activation, gpu_ids)
 
@@ -48,6 +60,7 @@ def define_d(input_nc=3, ndf=64, img_f=512, layers=6, norm='none', activation='L
 def define_textual_attention(image_dim, text_dim, init_type='orthogonal', gpu_ids=[]):
     net = ImageTextAttention(idf=image_dim, cdf=text_dim)
     return init_net(net, init_type, gpu_ids=gpu_ids)
+
 
 #############################################################################################################
 # Network structure
@@ -265,6 +278,149 @@ class TextualResEncoder(nn.Module):
 
         return distributions
 
+class AttTextualResEncoder(nn.Module):
+    """
+    Attentive Encoder Network
+    :param input_nc: number of channels in input
+    :param ngf: base filter channel
+    :param z_nc: latent channels
+    :param img_f: the largest feature channels
+    :param L: Number of refinements of density
+    :param layers: down and up sample layers
+    :param norm: normalization function 'instance, batch, group'
+    :param activation: activation function 'ReLU, SELU, LeakyReLU, PReLU'
+    :param image_dim: num of image feature maps
+    :param text_dim: num of text embedding dimension
+    """
+    def __init__(self, input_nc=3, ngf=32, z_nc=256, img_f=256, L=6, layers=5, norm='none', activation='ReLU',
+                 use_spect=True, use_coord=False, image_dim=256, text_dim=256):
+        super(AttTextualResEncoder, self).__init__()
+
+        self.layers = layers
+        self.z_nc = z_nc
+        self.L = L
+
+        norm_layer = get_norm_layer(norm_type=norm)
+        nonlinearity = get_nonlinearity_layer(activation_type=activation)
+        # encoder part
+        self.block0 = ResBlockEncoderOptimized(input_nc, ngf, norm_layer, nonlinearity, use_spect, use_coord)
+        self.word_attention = ImageTextAttention(idf=image_dim, cdf=text_dim)
+
+        mult = 1
+        for i in range(layers-1):
+            mult_prev = mult
+            mult = min(2 ** (i + 2), img_f // ngf)
+            block = ResBlock(ngf * mult_prev, ngf * mult, ngf * mult_prev, norm_layer, nonlinearity, 'down', use_spect, use_coord)
+            setattr(self, 'encoder' + str(i), block)
+
+        # inference part
+        for i in range(self.L):
+            block = ResBlock(ngf * mult, ngf * mult, ngf *mult, norm_layer, nonlinearity, 'none', use_spect, use_coord)
+            setattr(self, 'infer_prior' + str(i), block)
+
+        # For textual, only change input and hidden dimension, z_nc is set when called.
+        self.posterior = ResBlock(ngf * mult * 3, 2*z_nc, ngf * mult * 3, norm_layer, nonlinearity, 'none', use_spect, use_coord)
+        self.prior = ResBlock(ngf * mult * 3, 2*z_nc, ngf * mult * 3, norm_layer, nonlinearity, 'none', use_spect, use_coord)
+
+    def forward(self, img_m, sentence_embedding, word_embeddings, text_mask, image_mask, img_c=None):
+        """
+        :param img_m: image with mask regions I_m
+        :param sentence_embedding: the sentence embedding of I
+        :param word_embeddings: word embedding of I
+        :param text_mask: mask of word sequence of word_embeddings
+        :param image_mask: mask of Im and Ic, need to scale if apply to fm
+        :param img_c: complement of I_m, the mask regions
+        :return distribution: distribution of mask regions, for training we have two paths, testing one path
+        :return feature: the conditional feature f_m, and the previous f_pre for auto context attention
+        :return text_feature: word and sentence features
+        """
+
+        if type(img_c) != type(None):
+            img = torch.cat([img_m, img_c], dim=0)
+        else:
+            img = img_m
+
+        # encoder part
+        out = self.block0(img)
+        feature = [out]
+        for i in range(self.layers-1):
+            model = getattr(self, 'encoder' + str(i))
+            out = model(out)
+            feature.append(out)
+
+        # infer part
+        # during the training, we have two paths, during the testing, we only have one paths
+        image_mask = task.scale_img(image_mask, size=[feature[-1].size(2), feature[-1].size(3)])
+        if image_mask.size(1) == 3:
+            image_mask = image_mask.chunk(3, dim=1)[0]
+
+        if type(img_c) != type(None):
+            # adapt to word embedding, compute weighted word embedding with fm separately
+            f_m_rec, f_m_g = feature[-1].chunk(2)[0], feature[-1].chunk(2)[0]
+            img_mask_g = image_mask
+            img_mask_rec = 1 - img_mask_g
+            weighted_word_embedding_rec = self.word_attention(
+                        f_m_rec, word_embeddings, mask=text_mask, image_mask=img_mask_rec, inverse_attention=False)
+            weighted_word_embedding_g = self.word_attention(
+                        f_m_g, word_embeddings, mask=text_mask, image_mask=img_mask_g, inverse_attention=True)
+            weighted_word_embedding =  torch.cat([weighted_word_embedding_rec, weighted_word_embedding_g])
+            distribution, f_text = self.two_paths(out, sentence_embedding, weighted_word_embedding)
+
+            return distribution, feature, f_text
+        else:
+            # adapt to word embedding, compute weighted word embedding with fm of one path
+            f_m = feature[-1]
+            weighted_word_embedding = self.word_attention(
+                f_m, word_embeddings, mask=text_mask, image_mask=image_mask, inverse_attention=True)
+            distribution, f_m_text = self.one_path(out, sentence_embedding, weighted_word_embedding)
+
+            return distribution, feature, f_m_text
+
+    def one_path(self, f_in, sentence_embedding, weighted_word_embedding):
+        """one path for baseline training or testing"""
+        # TOTEST: adapt to word embedding, compute distribution with word embedding.
+        f_m = f_in
+        distribution = []
+
+        # infer state
+        for i in range(self.L):
+            infer_prior = getattr(self, 'infer_prior' + str(i))
+            f_m = infer_prior(f_m)
+
+        # get distribution
+        # use sentence embedding here
+        ix, iw = f_m.size(2), f_m.size(3)
+        sentence_dim = sentence_embedding.size(1)
+        sentence_embedding_replication = sentence_embedding.view(-1, sentence_dim, 1, 1).repeat(1, 1, ix, iw)
+        f_m_text = torch.cat([f_m, sentence_embedding_replication, weighted_word_embedding], dim=1)
+
+        o = self.prior(f_m_text)
+        q_mu, q_std = torch.split(o, self.z_nc, dim=1)
+        distribution.append([q_mu, F.softplus(q_std)])
+
+        return distribution, f_m_text
+
+    def two_paths(self, f_in, sentence_embedding, weighted_word_embedding):
+        """two paths for the training"""
+        # TOTEST: adapt to word embedding, compute distribution with word embedding.
+        f_m, f_c = f_in.chunk(2)
+        weighted_word_embedding_m, weighted_word_embedding_c = weighted_word_embedding.chunk(2)
+        distributions = []
+
+        # get distribution
+        # use sentence embedding here
+        ix, iw = f_c.size(2), f_c.size(3)
+        sentence_dim = sentence_embedding.size(1)
+        sentence_embedding_replication = sentence_embedding.view(-1, sentence_dim, 1, 1).repeat(1, 1, ix, iw)
+        f_c_text = torch.cat([f_c, sentence_embedding_replication, weighted_word_embedding_c], dim=1)
+        o = self.posterior(f_c_text)
+        p_mu, p_std = torch.split(o, self.z_nc, dim=1)
+
+        distribution, f_m_text = self.one_path(f_m, sentence_embedding, weighted_word_embedding_m)
+        distributions.append([p_mu, F.softplus(p_std), distribution[0][0], distribution[0][1]])
+
+        return distributions, torch.cat([f_m_text, f_c_text], dim=0)
+
 
 class ResGenerator(nn.Module):
     """
@@ -292,6 +448,7 @@ class ResGenerator(nn.Module):
         nonlinearity = get_nonlinearity_layer(activation_type=activation)
         # latent z to feature
         mult = min(2 ** (layers-1), img_f // ngf)
+        # input -> hidden
         self.generator = ResBlock(z_nc, ngf * mult, ngf * mult, None, nonlinearity, 'none', use_spect, use_coord)
 
         # transform
@@ -335,6 +492,95 @@ class ResGenerator(nn.Module):
 
         # the features come from mask regions and valid regions, we directly add them together
         out = f_m + f
+        results= []
+        attn = 0
+        for i in range(self.layers):
+            model = getattr(self, 'decoder' + str(i))
+            out = model(out)
+            if i == 1 and self.use_attn:
+                # auto attention
+                model = getattr(self, 'attn' + str(i))
+                out, attn = model(out, f_e, mask)
+            if i > self.layers - self.output_scale - 1:
+                model = getattr(self, 'out' + str(i))
+                output = model(out)
+                results.append(output)
+                out = torch.cat([out, output], dim=1)
+
+        return results, attn
+
+class HiddenResGenerator(nn.Module):
+    """
+    ResNet Generator Network
+    :param output_nc: number of channels in output
+    :param ngf: base filter channel
+    :param z_nc: latent channels
+    :param img_f: the largest feature channels
+    :param L: Number of refinements of density
+    :param layers: down and up sample layers
+    :param norm: normalization function 'instance, batch, group'
+    :param activation: activation function 'ReLU, SELU, LeakyReLU, PReLU'
+    :param output_scale: Different output scales
+    """
+    def __init__(self, output_nc=3, f_text_dim=384, ngf=64, z_nc=128, img_f=1024, L=1, layers=6, norm='batch', activation='ReLU',
+                 output_scale=1, use_spect=True, use_coord=False, use_attn=True):
+        super(HiddenResGenerator, self).__init__()
+
+        self.layers = layers
+        self.L = L
+        self.output_scale = output_scale
+        self.use_attn = use_attn
+
+        norm_layer = get_norm_layer(norm_type=norm)
+        nonlinearity = get_nonlinearity_layer(activation_type=activation)
+        # latent z to feature
+        mult = min(2 ** (layers-1), img_f // ngf)
+        # input -> hidden
+        self.generator = ResBlock(z_nc, ngf * mult, ngf * mult, None, nonlinearity, 'none', use_spect, use_coord)
+        self.f_transformer = ResBlock(f_text_dim, ngf * mult, ngf * mult, None, nonlinearity, 'none', use_spect, use_coord)
+
+        # transform
+        for i in range(self.L):
+            block = ResBlock(ngf * mult, ngf * mult, ngf * mult, None, nonlinearity, 'none', use_spect, use_coord)
+            setattr(self, 'generator' + str(i), block)
+
+        # decoder part
+        for i in range(layers):
+            mult_prev = mult
+            mult = min(2 ** (layers - i - 1), img_f // ngf)
+            if i > layers - output_scale:
+                # upconv = ResBlock(ngf * mult_prev + output_nc, ngf * mult, ngf * mult, norm_layer, nonlinearity, 'up', True)
+                upconv = ResBlockDecoder(ngf * mult_prev + output_nc, ngf * mult, ngf * mult, norm_layer, nonlinearity, use_spect, use_coord)
+            else:
+                # upconv = ResBlock(ngf * mult_prev, ngf * mult, ngf * mult, norm_layer, nonlinearity, 'up', True)
+                upconv = ResBlockDecoder(ngf * mult_prev , ngf * mult, ngf * mult, norm_layer, nonlinearity, use_spect, use_coord)
+            setattr(self, 'decoder' + str(i), upconv)
+            # output part
+            if i > layers - output_scale - 1:
+                outconv = Output(ngf * mult, output_nc, 3, None, nonlinearity, use_spect, use_coord)
+                setattr(self, 'out' + str(i), outconv)
+            # short+long term attention part
+            if i == 1 and use_attn:
+                attn = Auto_Attn(ngf*mult, None)
+                setattr(self, 'attn' + str(i), attn)
+
+    def forward(self, z, f_text=None, f_e=None, mask=None):
+        """
+        ResNet Generator Network
+        :param z: latent vector
+        :param f_m: feature of valid regions for conditional VAG-GAN
+        :param f_e: previous encoder feature for short+long term attention layer
+        :return results: different scale generation outputs
+        """
+
+        f = self.generator(z)
+        for i in range(self.L):
+             generator = getattr(self, 'generator' + str(i)) # dimension not change
+             f = generator(f)
+        f_text_trans = self.f_transformer(f_text)
+        # the features come from mask regions and valid regions, we directly add them together
+        # TODO: rm this step, because some information comes from word and this is only for image. use text_features
+        out = f_text_trans + f
         results= []
         attn = 0
         for i in range(self.layers):
