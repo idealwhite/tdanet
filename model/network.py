@@ -319,8 +319,8 @@ class AttTextualResEncoder(nn.Module):
             setattr(self, 'infer_prior' + str(i), block)
 
         # For textual, only change input and hidden dimension, z_nc is set when called.
-        self.posterior = ResBlock(ngf * mult * 3, 2*z_nc, ngf * mult * 3, norm_layer, nonlinearity, 'none', use_spect, use_coord)
-        self.prior = ResBlock(ngf * mult * 3, 2*z_nc, ngf * mult * 3, norm_layer, nonlinearity, 'none', use_spect, use_coord)
+        self.posterior = ResBlock(ngf * mult + 2*text_dim, 2*z_nc, ngf * mult * 2, norm_layer, nonlinearity, 'none', use_spect, use_coord)
+        self.prior =     ResBlock(ngf * mult + 2*text_dim, 2*z_nc, ngf * mult * 2, norm_layer, nonlinearity, 'none', use_spect, use_coord)
 
     def forward(self, img_m, sentence_embedding, word_embeddings, text_mask, image_mask, img_c=None):
         """
@@ -356,14 +356,14 @@ class AttTextualResEncoder(nn.Module):
 
         if type(img_c) != type(None):
             # adapt to word embedding, compute weighted word embedding with fm separately
-            f_m_rec, f_m_g = feature[-1].chunk(2)[0], feature[-1].chunk(2)[0]
+            f_m_g, f_m_rec = feature[-1].chunk(2)
             img_mask_g = image_mask
             img_mask_rec = 1 - img_mask_g
             weighted_word_embedding_rec = self.word_attention(
                         f_m_rec, word_embeddings, mask=text_mask, image_mask=img_mask_rec, inverse_attention=False)
             weighted_word_embedding_g = self.word_attention(
                         f_m_g, word_embeddings, mask=text_mask, image_mask=img_mask_g, inverse_attention=True)
-            weighted_word_embedding =  torch.cat([weighted_word_embedding_rec, weighted_word_embedding_g])
+            weighted_word_embedding =  torch.cat([weighted_word_embedding_g, weighted_word_embedding_rec])
             distribution, f_text = self.two_paths(out, sentence_embedding, weighted_word_embedding)
 
             return distribution, feature, f_text
@@ -392,13 +392,14 @@ class AttTextualResEncoder(nn.Module):
         ix, iw = f_m.size(2), f_m.size(3)
         sentence_dim = sentence_embedding.size(1)
         sentence_embedding_replication = sentence_embedding.view(-1, sentence_dim, 1, 1).repeat(1, 1, ix, iw)
-        f_m_text = torch.cat([f_m, sentence_embedding_replication, weighted_word_embedding], dim=1)
+        f_m_sent = torch.cat([f_m, sentence_embedding_replication], dim=1)
+        f_m_text = torch.cat([f_m_sent, weighted_word_embedding], dim=1)
 
         o = self.prior(f_m_text)
         q_mu, q_std = torch.split(o, self.z_nc, dim=1)
         distribution.append([q_mu, F.softplus(q_std)])
 
-        return distribution, f_m_text
+        return distribution, f_m_sent
 
     def two_paths(self, f_in, sentence_embedding, weighted_word_embedding):
         """two paths for the training"""
@@ -412,13 +413,17 @@ class AttTextualResEncoder(nn.Module):
         ix, iw = f_c.size(2), f_c.size(3)
         sentence_dim = sentence_embedding.size(1)
         sentence_embedding_replication = sentence_embedding.view(-1, sentence_dim, 1, 1).repeat(1, 1, ix, iw)
-        f_c_text = torch.cat([f_c, sentence_embedding_replication, weighted_word_embedding_c], dim=1)
+        f_c_sent = torch.cat([f_c, sentence_embedding_replication], dim=1)
+        f_c_text = torch.cat([f_c_sent, weighted_word_embedding_c], dim=1)
         o = self.posterior(f_c_text)
         p_mu, p_std = torch.split(o, self.z_nc, dim=1)
 
-        distribution, f_m_text = self.one_path(f_m, sentence_embedding, weighted_word_embedding_m)
+        distribution, f_m_sent = self.one_path(f_m, sentence_embedding, weighted_word_embedding_m)
         distributions.append([p_mu, F.softplus(p_std), distribution[0][0], distribution[0][1]])
 
+        # TODO: this can be changed, because of the residual of fm in G.
+        f_m_text = torch.cat([f_m_sent, weighted_word_embedding_m], dim=1)
+        f_c_text = torch.cat([f_m_sent, weighted_word_embedding_c], dim=1)
         return distributions, torch.cat([f_m_text, f_c_text], dim=0)
 
 
@@ -522,7 +527,7 @@ class HiddenResGenerator(nn.Module):
     :param activation: activation function 'ReLU, SELU, LeakyReLU, PReLU'
     :param output_scale: Different output scales
     """
-    def __init__(self, output_nc=3, f_text_dim=384, ngf=64, z_nc=128, img_f=1024, L=1, layers=6, norm='batch', activation='ReLU',
+    def __init__(self, output_nc=3, f_text_dim=384, ngf=64, z_nc=128, img_f=256, L=1, layers=6, norm='batch', activation='ReLU',
                  output_scale=1, use_spect=True, use_coord=False, use_attn=True):
         super(HiddenResGenerator, self).__init__()
 

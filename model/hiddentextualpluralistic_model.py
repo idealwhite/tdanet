@@ -36,7 +36,7 @@ class HiddenTextualPluralistic(BaseModel):
         self.loss_names = ['kl_rec', 'kl_g', 'l1_rec', 'l1_g', 'gan_g', 'word_g', 'sentence_g',
                            'gan_rec', 'ad_l2_rec', 'word_rec', 'sentence_rec',  'dis_img', 'dis_img_rec']
         self.log_names = []
-        self.visual_names = ['img_m', 'img_truth', 'img_out', 'img_g', 'img_rec']
+        self.visual_names = ['img_m', 'img_truth', 'img_c', 'img_out', 'img_g', 'img_rec']
         self.text_names = ['text_positive']
         self.value_names = ['u_m', 'sigma_m', 'u_post', 'sigma_post', 'u_prior', 'sigma_prior']
         self.model_names = ['E', 'G', 'D', 'D_rec']
@@ -45,9 +45,9 @@ class HiddenTextualPluralistic(BaseModel):
         self.prior_beta = opt.prior_beta
 
         # define the inpainting model
-        self.net_E = network.define_att_textual_e(ngf=32, z_nc=384, img_f=256, layers=5, norm='none', activation='LeakyReLU',
+        self.net_E = network.define_att_textual_e(ngf=32, z_nc=256, img_f=256, layers=5, norm='none', activation='LeakyReLU',
                                       init_type='orthogonal', gpu_ids=opt.gpu_ids, image_dim=256, text_dim=256)
-        self.net_G = network.define_hidden_textual_g(f_text_dim=768, ngf=32, z_nc=384, img_f=256, L=0, layers=5, output_scale=opt.output_scale,
+        self.net_G = network.define_hidden_textual_g(f_text_dim=768, ngf=32, z_nc=256, img_f=256, L=0, layers=5, output_scale=opt.output_scale,
                                       norm='instance', activation='LeakyReLU', init_type='orthogonal', gpu_ids=opt.gpu_ids)
         # define the discriminator model
         self.net_D = network.define_d(ndf=32, img_f=128, layers=5, model_type='ResDis', init_type='orthogonal', gpu_ids=opt.gpu_ids)
