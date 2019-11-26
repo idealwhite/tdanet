@@ -45,11 +45,11 @@ class TextualPluralistic(BaseModel):
         self.prior_beta = opt.prior_beta
 
         # define the inpainting model
-        self.net_E = network.define_textual_e(ngf=32, z_nc=256, img_f=256, layers=5, norm='none', activation='LeakyReLU',
-                                      init_type='orthogonal', gpu_ids=opt.gpu_ids)
-        self.net_G = network.define_textual_g(ngf=32, z_nc=256, img_f=256, L=0, layers=5, output_scale=opt.output_scale,
-                                      norm='instance', activation='LeakyReLU', init_type='orthogonal', gpu_ids=opt.gpu_ids)
-        self.word_attention = network.define_textual_attention(256, 256, init_type='orthogonal', gpu_ids=opt.gpu_ids)
+        self.net_E = network.define_textual_e(ngf=32, z_nc=256, img_f=128, layers=5, norm='none', activation='LeakyReLU',
+                                      init_type='orthogonal', gpu_ids=opt.gpu_ids, text_dim=256)
+        self.net_G = network.define_textual_g(ngf=32, z_nc=256, img_f=128, L=0, layers=5, output_scale=opt.output_scale,
+                          norm='instance', activation='LeakyReLU', init_type='orthogonal', gpu_ids=opt.gpu_ids, text_dim=256)
+        self.word_attention = network.define_textual_attention(image_dim=128, text_dim=256, init_type='orthogonal', gpu_ids=opt.gpu_ids)
         # define the discriminator model
         self.net_D = network.define_d(ndf=32, img_f=128, layers=5, model_type='ResDis', init_type='orthogonal', gpu_ids=opt.gpu_ids)
         self.net_D_rec = network.define_d(ndf=32, img_f=128, layers=5, model_type='ResDis', init_type='orthogonal', gpu_ids=opt.gpu_ids)
@@ -208,7 +208,7 @@ class TextualPluralistic(BaseModel):
         z, f_m, f_e, mask = self.get_G_inputs(p_distribution, q_distribution, f) # prepare inputs: img, mask, distribute
 
         # compute attention for wordembedding here.
-        f_e_rec, f_e_g = f_e.chunk(2)
+        f_e_g, f_e_rec = f_e.chunk(2)
         _, img_mask_g = mask.chunk(2)
         img_mask_rec = 1 - img_mask_g
 
@@ -216,7 +216,7 @@ class TextualPluralistic(BaseModel):
             f_e_rec, self.word_embeddings, mask=self.text_mask, image_mask=img_mask_rec, inverse_attention=False)
         weighted_word_embedding_g = self.word_attention( \
             f_e_g, self.word_embeddings, mask=self.text_mask, image_mask=img_mask_g, inverse_attention=True)
-        weighted_word_embedding = torch.cat([weighted_word_embedding_rec, weighted_word_embedding_g])
+        weighted_word_embedding = torch.cat([weighted_word_embedding_g, weighted_word_embedding_rec])
 
         results, attn = self.net_G(z, f_m, f_e, weighted_word_embedding, mask)
         self.img_rec = []

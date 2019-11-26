@@ -15,9 +15,9 @@ def define_e(input_nc=3, ngf=64, z_nc=512, img_f=512, L=6, layers=5, norm='none'
     return init_net(net, init_type, activation, gpu_ids)
 
 def define_textual_e(input_nc=3, ngf=64, z_nc=512, img_f=512, L=6, layers=5, norm='none', activation='ReLU', use_spect=True,
-             use_coord=False, init_type='orthogonal', gpu_ids=[]):
+             use_coord=False, init_type='orthogonal', gpu_ids=[], text_dim=256):
 
-    net = TextualResEncoder(input_nc, ngf, z_nc, img_f, L, layers, norm, activation, use_spect, use_coord)
+    net = TextualResEncoder(input_nc, ngf, z_nc, img_f, L, layers, norm, activation, use_spect, use_coord, text_dim)
 
     return init_net(net, init_type, activation, gpu_ids)
 
@@ -34,9 +34,9 @@ def define_g(output_nc=3, ngf=64, z_nc=512, img_f=512, L=1, layers=5, norm='inst
     return init_net(net, init_type, activation, gpu_ids)
 
 def define_textual_g(output_nc=3, ngf=64, z_nc=512, img_f=512, L=1, layers=5, norm='instance', activation='ReLU', output_scale=1,
-             use_spect=True, use_coord=False, use_attn=True, init_type='orthogonal', gpu_ids=[]):
+             use_spect=True, use_coord=False, use_attn=True, init_type='orthogonal', gpu_ids=[], text_dim=256):
 
-    net = TextualResGenerator(output_nc, ngf, z_nc, img_f, L, layers, norm, activation, output_scale, use_spect, use_coord, use_attn)
+    net = TextualResGenerator(output_nc, ngf, z_nc, img_f, L, layers, norm, activation, output_scale, use_spect, use_coord, use_attn, text_dim)
 
     return init_net(net, init_type, activation, gpu_ids)
 
@@ -177,8 +177,8 @@ class TextualResEncoder(nn.Module):
     :param norm: normalization function 'instance, batch, group'
     :param activation: activation function 'ReLU, SELU, LeakyReLU, PReLU'
     """
-    def __init__(self, input_nc=3, ngf=32, z_nc=256, img_f=256, L=6, layers=5, norm='none', activation='ReLU',
-                 use_spect=True, use_coord=False):
+    def __init__(self, input_nc=3, ngf=32, z_nc=256, img_f=128, L=6, layers=5, norm='none', activation='ReLU',
+                 use_spect=True, use_coord=False, text_dim=256):
         super(TextualResEncoder, self).__init__()
 
         self.layers = layers
@@ -203,8 +203,8 @@ class TextualResEncoder(nn.Module):
             setattr(self, 'infer_prior' + str(i), block)
 
         # For textual, only change input and hidden dimension, z_nc is set when called.
-        self.posterior = ResBlock(ngf * mult * 2, 2*z_nc, ngf * mult * 2, norm_layer, nonlinearity, 'none', use_spect, use_coord)
-        self.prior = ResBlock(ngf * mult * 2, 2*z_nc, ngf * mult * 2, norm_layer, nonlinearity, 'none', use_spect, use_coord)
+        self.posterior = ResBlock(ngf * mult + text_dim, 2*z_nc, ngf * mult * 2, norm_layer, nonlinearity, 'none', use_spect, use_coord)
+        self.prior = ResBlock(ngf * mult + text_dim, 2*z_nc, ngf * mult * 2, norm_layer, nonlinearity, 'none', use_spect, use_coord)
 
     def forward(self, img_m, sentence_embedding, img_c=None):
         """
@@ -618,7 +618,7 @@ class TextualResGenerator(nn.Module):
     :param output_scale: Different output scales
     """
     def __init__(self, output_nc=3, ngf=32, z_nc=256, img_f=256, L=0, layers=5, norm='instance', activation='ReLU',
-                 output_scale=4, use_spect=True, use_coord=False, use_attn=True):
+                 output_scale=4, use_spect=True, use_coord=False, use_attn=True, text_dim=256):
         super(TextualResGenerator, self).__init__()
 
         self.layers = layers
@@ -648,17 +648,18 @@ class TextualResGenerator(nn.Module):
                 # upconv = ResBlock(ngf * mult_prev, ngf * mult, ngf * mult, norm_layer, nonlinearity, 'up', True)
                 upconv = ResBlockDecoder(ngf * mult_prev , ngf * mult, ngf * mult, norm_layer, nonlinearity, use_spect, use_coord)
             setattr(self, 'decoder' + str(i), upconv)
-            # output part
-            if i > layers - output_scale - 1:
-                outconv = Output(ngf * mult, output_nc, 3, None, nonlinearity, use_spect, use_coord)
-                setattr(self, 'out' + str(i), outconv)
             # short+long term attention part
             if i == 1 and use_attn:
                 attn = Auto_Attn(ngf*mult, None)
                 setattr(self, 'attn' + str(i), attn)
-            if i == 1:
-                text_transfer = ResBlock(ngf * mult * 2, ngf * mult, ngf * mult, None, nonlinearity, 'none', use_spect, use_coord)
+                text_transfer = ResBlock(ngf * mult + text_dim, ngf * mult + text_dim, ngf * mult, None, nonlinearity, 'none', use_spect, use_coord)
                 setattr(self, 'text_transfer', text_transfer)
+                mult += text_dim // ngf
+            # output part
+            if i > layers - output_scale - 1:
+                outconv = Output(ngf * mult, output_nc, 3, None, nonlinearity, use_spect, use_coord)
+                setattr(self, 'out' + str(i), outconv)
+
     def forward(self, z, f_m=None, f_e=None, f_word=None, mask=None):
         """
         ResNet Generator Network
