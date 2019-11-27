@@ -286,7 +286,8 @@ class HiddenTextualPluralistic(BaseModel):
             if self.opt.train_paths == "one":
                 loss_l1_g += self.L1loss(img_fake_i, img_real_i)
             elif self.opt.train_paths == "two":
-                loss_l1_g += self.L1loss(img_fake_i*mask_i, img_real_i*mask_i)
+                # TODO: remove the mask if g are different to rec or masked area of g is terrible
+                loss_l1_g += self.L1loss(img_fake_i, img_real_i)
 
         self.loss_l1_rec = loss_l1_rec * self.opt.lambda_rec_l1
         self.loss_l1_g = loss_l1_g * self.opt.lambda_gen_l1
