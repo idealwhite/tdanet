@@ -418,7 +418,7 @@ class ImageTextAttention(nn.Module):
     https://github.com/OpenNMT/OpenNMT-py/tree/fc23dfef1ba2f258858b2765d24565266526dc76/onmt/modules
     http://www.aclweb.org/anthology/D15-1166
     """
-    def __init__(self, idf, cdf, multi_peak=True):
+    def __init__(self, idf, cdf, multi_peak=False):
         super(ImageTextAttention, self).__init__()
         self.conv_image = conv1x1(idf, cdf)
         self.sm = nn.Softmax()
