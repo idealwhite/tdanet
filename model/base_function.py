@@ -418,12 +418,14 @@ class ImageTextAttention(nn.Module):
     https://github.com/OpenNMT/OpenNMT-py/tree/fc23dfef1ba2f258858b2765d24565266526dc76/onmt/modules
     http://www.aclweb.org/anthology/D15-1166
     """
-    def __init__(self, idf, cdf):
+    def __init__(self, idf, cdf, multi_peak=True):
         super(ImageTextAttention, self).__init__()
         self.conv_image = conv1x1(idf, cdf)
         self.sm = nn.Softmax()
+        self.multi_peak = multi_peak
+        self.sigmoid = nn.Sigmoid()
 
-    def forward(self, image, text, mask=None, image_mask=None, inverse_attention=False):
+    def forward_softmax(self, image, text, mask=None, image_mask=None, inverse_attention=False):
         """
             input: batch x idf x ih x iw (image_L=ihxiw)
             context: batch x cdf x text_L
@@ -472,6 +474,64 @@ class ImageTextAttention(nn.Module):
         attn = attn.view(batch_size, -1, ih, iw)
 
         return weightedContext
+
+    def forward_sigmoid(self, image, text, mask=None, image_mask=None, inverse_attention=False):
+        """
+            input: batch x idf x ih x iw (image_L=ihxiw)
+            context: batch x cdf x text_L
+        """
+        ih, iw = image.size(2), image.size(3)
+        image_L = ih * iw
+        batch_size, text_L = text.size(0), text.size(2)
+
+        # --> batch x image_L x idf
+        image = self.conv_image(image)
+        image_flat = image.view(batch_size, -1, image_L)
+        image_flat_T = torch.transpose(image_flat, 1, 2).contiguous()
+
+        # Get attention
+        # (batch x image_L x idf)(batch x idf x text_L)
+        # -->batch x image_L x text_L
+        attn = torch.bmm(image_flat_T, text)
+
+        # Apply mask
+        if image_mask is not None:
+            # in img_mask, 0 is masked, so here we inverse the mask value
+            image_mask = (1-image_mask).bool()#torch.logical_not(image_mask.bool())
+            image_mask = image_mask.view(-1, image_L, 1).repeat(1, 1, text_L)
+
+            attn.data.masked_fill_(image_mask.data, -float('inf'))
+
+        # --> batch*image_L x text_L
+        attn = attn.view(batch_size*image_L, text_L)
+        if mask is not None:
+            # batch_size x text_L --> batch_size*image_L x text_L
+            mask = mask.repeat(image_L, 1)
+            attn.data.masked_fill_(mask.data, -float('inf'))
+
+        attn = self.sigmoid(attn)  # Eq. (2)
+        if inverse_attention:
+            attn = 1 - attn
+
+        attn.data.masked_fill_(attn != attn, 0)
+        # --> batch x image_L x text_L
+        attn = attn.view(batch_size, image_L, text_L)
+        # --> batch x text_L x image_L
+        attn = torch.transpose(attn, 1, 2).contiguous()
+
+        # (batch x idf x text_L)(batch x text_L x image_L)
+        # --> batch x idf x image_L
+        weightedContext = torch.bmm(text, attn)
+        weightedContext = weightedContext.view(batch_size, -1, ih, iw)
+        attn = attn.view(batch_size, -1, ih, iw)
+
+        return weightedContext
+
+    def forward(self, image, text, mask=None, image_mask=None, inverse_attention=False):
+        if self.multi_peak:
+            return self.forward_sigmoid(image, text, mask, image_mask, inverse_attention)
+        else:
+            return self.forward_softmax(image, text, mask, image_mask, inverse_attention)
 
 class GlobalAttentionGeneral(nn.Module):
     """

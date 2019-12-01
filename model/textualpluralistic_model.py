@@ -49,7 +49,7 @@ class TextualPluralistic(BaseModel):
                                       init_type='orthogonal', gpu_ids=opt.gpu_ids, text_dim=256)
         self.net_G = network.define_textual_g(ngf=32, z_nc=256, img_f=128, L=0, layers=5, output_scale=opt.output_scale,
                           norm='instance', activation='LeakyReLU', init_type='orthogonal', gpu_ids=opt.gpu_ids, text_dim=256)
-        self.word_attention = network.define_textual_attention(image_dim=128, text_dim=256, init_type='orthogonal', gpu_ids=opt.gpu_ids)
+        self.word_attention = network.define_textual_attention(image_dim=128, text_dim=256, multi_peak=True, init_type='orthogonal', gpu_ids=opt.gpu_ids)
         # define the discriminator model
         self.net_D = network.define_d(ndf=32, img_f=128, layers=5, model_type='ResDis', init_type='orthogonal', gpu_ids=opt.gpu_ids)
         self.net_D_rec = network.define_d(ndf=32, img_f=128, layers=5, model_type='ResDis', init_type='orthogonal', gpu_ids=opt.gpu_ids)
@@ -64,7 +64,7 @@ class TextualPluralistic(BaseModel):
             self.L2loss = torch.nn.MSELoss()
 
             self.image_encoder = network.CNN_ENCODER(text_config.EMBEDDING_DIM)
-            state_dict = torch.load(\
+            state_dict = torch.load(
                 text_config.IMAGE_ENCODER, map_location=lambda storage, loc: storage)
             self.image_encoder.load_state_dict(state_dict)
             self.image_encoder.eval()

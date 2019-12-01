@@ -22,8 +22,8 @@ def define_textual_e(input_nc=3, ngf=64, z_nc=512, img_f=512, L=6, layers=5, nor
     return init_net(net, init_type, activation, gpu_ids)
 
 def define_att_textual_e(input_nc=3, ngf=64, z_nc=512, img_f=512, L=6, layers=5, norm='none', activation='ReLU', use_spect=True,
-             use_coord=False, init_type='orthogonal', gpu_ids=[], image_dim=256, text_dim=256):
-    net = AttTextualResEncoder(input_nc, ngf, z_nc, img_f, L, layers, norm, activation, use_spect, use_coord, image_dim, text_dim)
+             use_coord=False, init_type='orthogonal', gpu_ids=[], image_dim=256, text_dim=256, multi_peak=True):
+    net = AttTextualResEncoder(input_nc, ngf, z_nc, img_f, L, layers, norm, activation, use_spect, use_coord, image_dim, text_dim, multi_peak)
     return init_net(net, init_type, activation, gpu_ids)
 
 def define_g(output_nc=3, ngf=64, z_nc=512, img_f=512, L=1, layers=5, norm='instance', activation='ReLU', output_scale=1,
@@ -57,8 +57,8 @@ def define_d(input_nc=3, ndf=64, img_f=512, layers=6, norm='none', activation='L
 
     return init_net(net, init_type, activation, gpu_ids)
 
-def define_textual_attention(image_dim, text_dim, init_type='orthogonal', gpu_ids=[]):
-    net = ImageTextAttention(idf=image_dim, cdf=text_dim)
+def define_textual_attention(image_dim, text_dim, multi_peak=True, init_type='orthogonal',  gpu_ids=[]):
+    net = ImageTextAttention(idf=image_dim, cdf=text_dim, multi_peak=multi_peak)
     return init_net(net, init_type, gpu_ids=gpu_ids)
 
 
@@ -291,9 +291,10 @@ class AttTextualResEncoder(nn.Module):
     :param activation: activation function 'ReLU, SELU, LeakyReLU, PReLU'
     :param image_dim: num of image feature maps
     :param text_dim: num of text embedding dimension
+    :param multi_peak: use sigmoid in text attention if set to True
     """
     def __init__(self, input_nc=3, ngf=32, z_nc=256, img_f=256, L=6, layers=5, norm='none', activation='ReLU',
-                 use_spect=True, use_coord=False, image_dim=256, text_dim=256):
+                 use_spect=True, use_coord=False, image_dim=256, text_dim=256, multi_peak=True):
         super(AttTextualResEncoder, self).__init__()
 
         self.layers = layers
@@ -304,7 +305,7 @@ class AttTextualResEncoder(nn.Module):
         nonlinearity = get_nonlinearity_layer(activation_type=activation)
         # encoder part
         self.block0 = ResBlockEncoderOptimized(input_nc, ngf, norm_layer, nonlinearity, use_spect, use_coord)
-        self.word_attention = ImageTextAttention(idf=image_dim, cdf=text_dim)
+        self.word_attention = ImageTextAttention(idf=image_dim, cdf=text_dim, multi_peak=True)
 
         mult = 1
         for i in range(layers-1):
@@ -373,8 +374,8 @@ class AttTextualResEncoder(nn.Module):
             weighted_word_embedding = self.word_attention(
                 f_m, word_embeddings, mask=text_mask, image_mask=image_mask, inverse_attention=True)
             distribution, f_m_text = self.one_path(out, sentence_embedding, weighted_word_embedding)
-
-            return distribution, feature, f_m_text
+            f_text = torch.cat([f_m_text, weighted_word_embedding], dim=1)
+            return distribution, feature, f_text
 
     def one_path(self, f_in, sentence_embedding, weighted_word_embedding):
         """one path for baseline training or testing"""
