@@ -33,7 +33,7 @@ class HiddenTextualPluralistic(BaseModel):
         """Initial the pluralistic model"""
         BaseModel.__init__(self, opt)
 
-        self.loss_names = ['kl_rec', 'kl_g', 'l1_rec', 'l1_g', 'gan_g', 'word_g', 'sentence_g',
+        self.loss_names = ['kl_rec', 'kl_g', 'l1_rec', 'l1_g', 'gan_g', 'word_g', 'sentence_g', 'ad_l2_g',
                            'gan_rec', 'ad_l2_rec', 'word_rec', 'sentence_rec',  'dis_img', 'dis_img_rec']
         self.log_names = []
         self.visual_names = ['img_m', 'img_truth', 'img_c', 'img_out', 'img_g', 'img_rec']
@@ -267,6 +267,10 @@ class HiddenTextualPluralistic(BaseModel):
         D_fake = self.net_D_rec(self.img_rec[-1])
         D_real = self.net_D_rec(self.img_truth)
         self.loss_ad_l2_rec = self.L2loss(D_fake, D_real) * self.opt.lambda_gan
+
+        # TODO: change this part if SN-PatchGAN loss is finished.
+        D_fake_g = self.net_D_rec(self.img_g[-1])
+        self.loss_ad_l2_g = self.L2loss(D_fake_g, D_real) * self.opt.lambda_gan
 
         # Text-image consistent loss
         loss_sentence = base_function.sent_loss(self.cnn_code_rec, self.sentence_embedding, self.match_labels)
