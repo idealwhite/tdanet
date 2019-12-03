@@ -114,20 +114,23 @@ class CreateDataset(data.Dataset):
 
         # external mask from "Image Inpainting for Irregular Holes Using Partial Convolutions (ECCV18)"
         if mask_type == 3:
-            if self.opt.isTrain:
-                mask_index = random.randint(0, self.mask_size-1)
-            else:
-                mask_index = index
+            mask_index = index
             mask_pil = Image.open(self.mask_paths[mask_index]).convert('RGB')
             size = mask_pil.size[0]
             if size > mask_pil.size[1]:
                 size = mask_pil.size[1]
-            mask_transform = transforms.Compose([transforms.RandomHorizontalFlip(),
+            if self.opt.isTrain:
+                mask_transform = transforms.Compose([transforms.RandomHorizontalFlip(),
                                                  transforms.RandomRotation(10),
                                                  transforms.CenterCrop([size, size]),
                                                  transforms.Resize(self.opt.fineSize),
                                                  transforms.ToTensor()
                                                  ])
+            else:
+                mask_transform = transforms.Compose([transforms.CenterCrop([size, size]),
+                                                     transforms.Resize(self.opt.fineSize),
+                                                     transforms.ToTensor()
+                                                     ])
             mask = (mask_transform(mask_pil) == 0).float()
             mask_pil.close()
             return mask
