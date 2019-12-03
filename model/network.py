@@ -22,8 +22,8 @@ def define_textual_e(input_nc=3, ngf=64, z_nc=512, img_f=512, L=6, layers=5, nor
     return init_net(net, init_type, activation, gpu_ids)
 
 def define_att_textual_e(input_nc=3, ngf=64, z_nc=512, img_f=512, L=6, layers=5, norm='none', activation='ReLU', use_spect=True,
-             use_coord=False, init_type='orthogonal', gpu_ids=[], image_dim=256, text_dim=256, multi_peak=True):
-    net = AttTextualResEncoder(input_nc, ngf, z_nc, img_f, L, layers, norm, activation, use_spect, use_coord, image_dim, text_dim, multi_peak)
+             use_coord=False, init_type='orthogonal', gpu_ids=[], image_dim=256, text_dim=256, multi_peak=True, pool_attention='max'):
+    net = AttTextualResEncoder(input_nc, ngf, z_nc, img_f, L, layers, norm, activation, use_spect, use_coord, image_dim, text_dim, multi_peak, pool_attention)
     return init_net(net, init_type, activation, gpu_ids)
 
 def define_g(output_nc=3, ngf=64, z_nc=512, img_f=512, L=1, layers=5, norm='instance', activation='ReLU', output_scale=1,
@@ -53,7 +53,7 @@ def define_d(input_nc=3, ndf=64, img_f=512, layers=6, norm='none', activation='L
     if model_type == 'ResDis':
         net = ResDiscriminator(input_nc, ndf, img_f, layers, norm, activation, use_spect, use_coord, use_attn)
     elif model_type == 'PatchDis':
-        net = PatchDiscriminator(input_nc, ndf, img_f, layers, norm, activation, use_spect, use_coord, use_attn)
+        net = SNPatchDiscriminator(input_nc, ndf, img_f, layers, norm, activation, use_spect, use_coord, use_attn)
 
     return init_net(net, init_type, activation, gpu_ids)
 
@@ -294,7 +294,7 @@ class AttTextualResEncoder(nn.Module):
     :param multi_peak: use sigmoid in text attention if set to True
     """
     def __init__(self, input_nc=3, ngf=32, z_nc=256, img_f=256, L=6, layers=5, norm='none', activation='ReLU',
-                 use_spect=True, use_coord=False, image_dim=256, text_dim=256, multi_peak=True):
+                 use_spect=True, use_coord=False, image_dim=256, text_dim=256, multi_peak=True, pool_attention='max'):
         super(AttTextualResEncoder, self).__init__()
 
         self.layers = layers
@@ -305,7 +305,7 @@ class AttTextualResEncoder(nn.Module):
         nonlinearity = get_nonlinearity_layer(activation_type=activation)
         # encoder part
         self.block0 = ResBlockEncoderOptimized(input_nc, ngf, norm_layer, nonlinearity, use_spect, use_coord)
-        self.word_attention = ImageTextAttention(idf=image_dim, cdf=text_dim, multi_peak=True)
+        self.word_attention = ImageTextAttention(idf=image_dim, cdf=text_dim, multi_peak=multi_peak, pooling=pool_attention)
 
         mult = 1
         for i in range(layers-1):
@@ -364,6 +364,7 @@ class AttTextualResEncoder(nn.Module):
                         f_m_rec, word_embeddings, mask=text_mask, image_mask=img_mask_rec, inverse_attention=False)
             weighted_word_embedding_g = self.word_attention(
                         f_m_g, word_embeddings, mask=text_mask, image_mask=img_mask_g, inverse_attention=True)
+
             weighted_word_embedding =  torch.cat([weighted_word_embedding_g, weighted_word_embedding_rec])
             distribution, f_text = self.two_paths(out, sentence_embedding, weighted_word_embedding)
 
@@ -373,6 +374,7 @@ class AttTextualResEncoder(nn.Module):
             f_m = feature[-1]
             weighted_word_embedding = self.word_attention(
                 f_m, word_embeddings, mask=text_mask, image_mask=image_mask, inverse_attention=True)
+
             distribution, f_m_text = self.one_path(out, sentence_embedding, weighted_word_embedding)
             f_text = torch.cat([f_m_text, weighted_word_embedding], dim=1)
             return distribution, feature, f_text
@@ -422,11 +424,9 @@ class AttTextualResEncoder(nn.Module):
         distribution, f_m_sent = self.one_path(f_m, sentence_embedding, weighted_word_embedding_m)
         distributions.append([p_mu, F.softplus(p_std), distribution[0][0], distribution[0][1]])
 
-        # TODO: this can be changed, because of the residual of fm in G.
         f_m_text = torch.cat([f_m_sent, weighted_word_embedding_m], dim=1)
         f_c_text = torch.cat([f_m_sent, weighted_word_embedding_c], dim=1)
         return distributions, torch.cat([f_m_text, f_c_text], dim=0)
-
 
 class ResGenerator(nn.Module):
     """
@@ -585,7 +585,6 @@ class HiddenResGenerator(nn.Module):
              f = generator(f)
         f_text_trans = self.f_transformer(f_text)
         # the features come from mask regions and valid regions, we directly add them together
-        # TODO: rm this step, because some information comes from word and this is only for image. use text_features
         out = f_text_trans + f
         results= []
         attn = 0
@@ -751,24 +750,22 @@ class ResDiscriminator(nn.Module):
         return out
 
 
-class PatchDiscriminator(nn.Module):
+
+class SNPatchDiscriminator(nn.Module):
     """
-    Patch Discriminator Network for Local 70*70 fake/real
+    SN Patch Discriminator Network for Local 70*70 fake/real
     :param input_nc: number of channels in input
     :param ndf: base filter channel
     :param img_f: the largest channel for the model
     :param layers: down sample layers
-    :param norm: normalization function 'instance, batch, group'
     :param activation: activation function 'ReLU, SELU, LeakyReLU, PReLU'
     :param use_spect: use spectral normalization or not
     :param use_coord: use CoordConv or nor
-    :param use_attn: use short+long attention or not
     """
-    def __init__(self, input_nc=3, ndf=64, img_f=512, layers=3, norm='batch', activation='LeakyReLU', use_spect=True,
-                 use_coord=False, use_attn=False):
-        super(PatchDiscriminator, self).__init__()
+    def __init__(self, input_nc=4, ndf=64, img_f=256, layers=6, activation='LeakyReLU',
+                 use_spect=True, use_coord=False):
+        super(SNPatchDiscriminator, self).__init__()
 
-        norm_layer = get_norm_layer(norm_type=norm)
         nonlinearity = get_nonlinearity_layer(activation_type=activation)
 
         kwargs = {'kernel_size': 4, 'stride': 2, 'padding': 1, 'bias': False}
@@ -782,18 +779,9 @@ class PatchDiscriminator(nn.Module):
             mult_prev = mult
             mult = min(2 ** i, img_f // ndf)
             sequence +=[
-                coord_conv(ndf * mult_prev, ndf * mult, use_spect, use_coord, **kwargs),
-                nonlinearity,
-            ]
-
-        mult_prev = mult
-        mult = min(2 ** i, img_f // ndf)
-        kwargs = {'kernel_size': 4, 'stride': 1, 'padding': 1, 'bias': False}
-        sequence += [
-            coord_conv(ndf * mult_prev, ndf * mult, use_spect, use_coord, **kwargs),
-            nonlinearity,
-            coord_conv(ndf * mult, 1, use_spect, use_coord, **kwargs),
-        ]
+                    coord_conv(ndf * mult_prev, ndf * mult, use_spect, use_coord, **kwargs),
+                    nonlinearity,
+                ]
 
         self.model = nn.Sequential(*sequence)
 

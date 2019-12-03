@@ -417,13 +417,25 @@ class ImageTextAttention(nn.Module):
     References:
     https://github.com/OpenNMT/OpenNMT-py/tree/fc23dfef1ba2f258858b2765d24565266526dc76/onmt/modules
     http://www.aclweb.org/anthology/D15-1166
+
+    :param idf: image dimension
+    :param cdf: text dimension
+    :param multi_peak: use sigmoid when computing word attention
+    :param pooling: pooling layer type on weightedConext
     """
-    def __init__(self, idf, cdf, multi_peak=False):
+    def __init__(self, idf, cdf, multi_peak=False, pooling='max'):
         super(ImageTextAttention, self).__init__()
         self.conv_image = conv1x1(idf, cdf)
         self.sm = nn.Softmax()
         self.multi_peak = multi_peak
         self.sigmoid = nn.Sigmoid()
+        self.pooling = pooling
+        if self.pooling == 'max':
+            self.pooling_layer = nn.AdaptiveMaxPool2d(1)
+        elif self.pooling == 'avg':
+            self.pooling_layer = nn.AdaptiveAvgPool2d(1)
+        else:
+            self.pooling = False
 
     def forward_softmax(self, image, text, mask=None, image_mask=None, inverse_attention=False):
         """
@@ -472,6 +484,10 @@ class ImageTextAttention(nn.Module):
         weightedContext = torch.bmm(text, attn)
         weightedContext = weightedContext.view(batch_size, -1, ih, iw)
         attn = attn.view(batch_size, -1, ih, iw)
+
+        if self.pooling:
+            weightedContext = self.pooling_layer(weightedContext)
+            weightedContext = weightedContext.repeat(1, 1, ih, iw)
 
         return weightedContext
 
@@ -524,6 +540,10 @@ class ImageTextAttention(nn.Module):
         weightedContext = torch.bmm(text, attn)
         weightedContext = weightedContext.view(batch_size, -1, ih, iw)
         attn = attn.view(batch_size, -1, ih, iw)
+
+        if self.pooling:
+            weightedContext = self.pooling_layer(weightedContext)
+            weightedContext = weightedContext.repeat(1, 1, ih, iw)
 
         return weightedContext
 
@@ -699,3 +719,16 @@ def words_loss(img_features, words_emb, labels, cap_lens, batch_size,
     else:
         loss0, loss1 = None, None
     return loss0 + loss1, att_maps
+
+class GANHingeLoss(nn.Module):
+    def __init__(self):
+        super(GANHingeLoss, self).__init__()
+        self.activation = nn.ReLU(inplace=True)
+
+    def __call__(self, pos, neg):
+        hinge_pos = torch.mean(self.activation(1-pos))
+        hinge_neg = torch.mean(self.activation(1+neg))
+        d_loss = .5 * hinge_pos + .5 * hinge_neg
+        g_loss = -torch.mean(neg)
+
+        return d_loss, g_loss
