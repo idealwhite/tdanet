@@ -2,16 +2,18 @@
 
 # Form implementation generated from reading ui file 'ui_window.ui'
 #
-# Created by: PyQt5 UI code generator 5.11.2
+# Created by: PyQt5 UI code generator 5.13.0
 #
 # WARNING! All changes made in this file will be lost!
 
+
 from PyQt5 import QtCore, QtGui, QtWidgets
+
 
 class Ui_Form(object):
     def setupUi(self, Form):
         Form.setObjectName("Form")
-        Form.resize(940, 560)
+        Form.resize(940, 640)
         self.label = QtWidgets.QLabel(Form)
         self.label.setGeometry(QtCore.QRect(190, 20, 500, 40))
         font = QtGui.QFont()
@@ -23,7 +25,7 @@ class Ui_Form(object):
         self.label.setAlignment(QtCore.Qt.AlignCenter)
         self.label.setObjectName("label")
         self.graphicsView_2 = QtWidgets.QGraphicsView(Form)
-        self.graphicsView_2.setGeometry(QtCore.QRect(590, 200, 320, 320))
+        self.graphicsView_2.setGeometry(QtCore.QRect(590, 230, 320, 320))
         self.graphicsView_2.setObjectName("graphicsView_2")
         self.label_4 = QtWidgets.QLabel(Form)
         self.label_4.setGeometry(QtCore.QRect(220, 170, 67, 17))
@@ -90,7 +92,7 @@ class Ui_Form(object):
         self.spinBox.setObjectName("spinBox")
         self.horizontalLayout_2.addWidget(self.spinBox)
         self.stackedWidget = QtWidgets.QStackedWidget(Form)
-        self.stackedWidget.setGeometry(QtCore.QRect(220, 200, 320, 320))
+        self.stackedWidget.setGeometry(QtCore.QRect(220, 260, 320, 320))
         self.stackedWidget.setObjectName("stackedWidget")
         self.page_3 = QtWidgets.QWidget()
         self.page_3.setObjectName("page_3")
@@ -112,10 +114,10 @@ class Ui_Form(object):
         self.pushButton_5.setGeometry(QtCore.QRect(70, 140, 109, 22))
         self.pushButton_5.setObjectName("pushButton_5")
         self.pushButton_6 = QtWidgets.QPushButton(Form)
-        self.pushButton_6.setGeometry(QtCore.QRect(590, 170, 131, 25))
+        self.pushButton_6.setGeometry(QtCore.QRect(590, 200, 131, 25))
         self.pushButton_6.setObjectName("pushButton_6")
         self.formLayoutWidget = QtWidgets.QWidget(Form)
-        self.formLayoutWidget.setGeometry(QtCore.QRect(790, 170, 121, 21))
+        self.formLayoutWidget.setGeometry(QtCore.QRect(790, 200, 121, 21))
         self.formLayoutWidget.setObjectName("formLayoutWidget")
         self.formLayout = QtWidgets.QFormLayout(self.formLayoutWidget)
         self.formLayout.setContentsMargins(0, 0, 0, 0)
@@ -129,16 +131,22 @@ class Ui_Form(object):
         self.label_6.setObjectName("label_6")
         self.formLayout.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.label_6)
         self.splitter = QtWidgets.QSplitter(Form)
-        self.splitter.setGeometry(QtCore.QRect(770, 170, 134, 17))
+        self.splitter.setGeometry(QtCore.QRect(770, 200, 134, 17))
         self.splitter.setOrientation(QtCore.Qt.Horizontal)
         self.splitter.setObjectName("splitter")
+        self.textEdit = QtWidgets.QTextEdit(Form)
+        self.textEdit.setGeometry(QtCore.QRect(220, 200, 321, 51))
+        self.textEdit.setObjectName("textEdit")
+        self.label_7 = QtWidgets.QLabel(Form)
+        self.label_7.setGeometry(QtCore.QRect(590, 170, 67, 17))
+        self.label_7.setObjectName("label_7")
 
         self.retranslateUi(Form)
         QtCore.QMetaObject.connectSlotsByName(Form)
 
     def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate
-        Form.setWindowTitle(_translate("Form", " "))
+        Form.setWindowTitle(_translate("Form", "Form"))
         self.label.setText(_translate("Form", "Pluralistic Image Completion"))
         self.label_4.setText(_translate("Form", "Input:"))
         self.pushButton.setText(_translate("Form", "load"))
@@ -158,7 +166,7 @@ class Ui_Form(object):
         self.label_2.setText(_translate("Form", "Bush Width:"))
         self.radioButton.setText(_translate("Form", "free-form"))
         self.radioButton_2.setText(_translate("Form", "rectangle"))
-        self.pushButton_5.setText(_translate("Form", "draw/clear"))
+        self.pushButton_5.setText(_translate("Form", "draw/erasure"))
         self.pushButton_6.setText(_translate("Form", "Original/Output"))
         self.label_5.setText(_translate("Form", "<html><head/><body><p>Score:</p></body></html>"))
-
+        self.label_7.setText(_translate("Form", "Output:"))

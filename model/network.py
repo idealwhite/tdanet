@@ -425,6 +425,7 @@ class AttTextualResEncoder(nn.Module):
         distributions.append([p_mu, F.softplus(p_std), distribution[0][0], distribution[0][1]])
 
         f_m_text = torch.cat([f_m_sent, weighted_word_embedding_m], dim=1)
+        # TODO: rm weighted_word_emb_c for consis generation
         f_c_text = torch.cat([f_m_sent, weighted_word_embedding_c], dim=1)
         return distributions, torch.cat([f_m_text, f_c_text], dim=0)
 

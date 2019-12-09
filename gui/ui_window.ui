@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>940</width>
-    <height>560</height>
+    <height>640</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -31,7 +31,7 @@
     </font>
    </property>
    <property name="text">
-    <string>Pluralistic Image Completion</string>
+    <string>Text Guided Image Inpainting</string>
    </property>
    <property name="alignment">
     <set>Qt::AlignCenter</set>
@@ -41,7 +41,7 @@
    <property name="geometry">
     <rect>
      <x>590</x>
-     <y>200</y>
+     <y>230</y>
      <width>320</width>
      <height>320</height>
     </rect>
@@ -132,42 +132,42 @@
       </item>
       <item>
        <property name="text">
-        <string>CelebA-HQ-center</string>
+        <string>bird_center</string>
        </property>
       </item>
       <item>
        <property name="text">
-        <string>Paris-center</string>
+        <string>place2_center</string>
        </property>
       </item>
       <item>
        <property name="text">
-        <string>ImageNet-center</string>
+        <string>coco_center</string>
        </property>
       </item>
       <item>
        <property name="text">
-        <string>Places2-center</string>
+        <string>flower_center</string>
        </property>
       </item>
       <item>
        <property name="text">
-        <string>CelebA-HQ-random</string>
+        <string>bird_random</string>
        </property>
       </item>
       <item>
        <property name="text">
-        <string>Paris-random</string>
+        <string>place2_random</string>
        </property>
       </item>
       <item>
        <property name="text">
-        <string>ImageNet-random</string>
+        <string>coco_random</string>
        </property>
       </item>
       <item>
        <property name="text">
-        <string>Places2-random</string>
+        <string>flower_random</string>
        </property>
       </item>
      </widget>
@@ -216,7 +216,7 @@
    <property name="geometry">
     <rect>
      <x>220</x>
-     <y>200</y>
+     <y>260</y>
      <width>320</width>
      <height>320</height>
     </rect>
@@ -280,7 +280,7 @@
    <property name="geometry">
     <rect>
      <x>590</x>
-     <y>170</y>
+     <y>200</y>
      <width>131</width>
      <height>25</height>
     </rect>
@@ -293,7 +293,7 @@
    <property name="geometry">
     <rect>
      <x>790</x>
-     <y>170</y>
+     <y>200</y>
      <width>121</width>
      <height>21</height>
     </rect>
@@ -322,13 +322,36 @@
    <property name="geometry">
     <rect>
      <x>770</x>
-     <y>170</y>
+     <y>200</y>
      <width>134</width>
      <height>17</height>
     </rect>
    </property>
    <property name="orientation">
     <enum>Qt::Horizontal</enum>
+   </property>
+  </widget>
+  <widget class="QTextEdit" name="textEdit">
+   <property name="geometry">
+    <rect>
+     <x>220</x>
+     <y>200</y>
+     <width>321</width>
+     <height>51</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_7">
+   <property name="geometry">
+    <rect>
+     <x>590</x>
+     <y>170</y>
+     <width>67</width>
+     <height>17</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Output:</string>
    </property>
   </widget>
  </widget>

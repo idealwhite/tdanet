@@ -19,7 +19,7 @@ class BaseOptions():
                             '2: random irregular mask. 3: external irregular mask. [0],[1,2],[1,2,3]')
         parser.add_argument('--checkpoints_dir', type=str, default='./checkpoints', help='models are save here')
         parser.add_argument('--which_iter', type=str, default='latest', help='which iterations to load')
-        parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0, 1, 2 use -1 for CPU')
+        parser.add_argument('--gpu_ids', type=str, default='-1', help='gpu ids: e.g. 0, 1, 2 use -1 for CPU')
         parser.add_argument('--text_config', type=str, default='config.bird.yml', help='path to text config')
         parser.add_argument('--output_scale', type=int, default=4, help='# of number of the output scale')
 

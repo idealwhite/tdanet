@@ -23,10 +23,12 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
         self.show_result_flag = False
         self.opt.loadSize = [256, 256]
         self.visualizer = Visualizer(opt)
-        self.model_name = ['celeba_center', 'paris_center', 'imagenet_center', 'place2_center',
-                           'celeba_random', 'paris_random','imagenet_random', 'place2_random']
+        self.model_name = ['bird_center', 'place2_center', 'coco_center', 'flower_center',
+                           'bird_random', 'place2_random','coco_random', 'flower_random']
+        self.config_name = ['config.bird.yml', 'config.place2.yml', 'config.coco.yml', 'config.flower.yml',
+                           'config.bird.yml', 'config.place2.yml','config.coco.yml', 'config.flower.yml']
         self.img_root = './datasets/'
-        self.img_files = ['celeba-hq', 'paris', 'imagenet', 'place2']
+        self.img_files = ['CUB_200_2011', 'place2', 'coco', 'flower']
         self.graphicsView_2.setMaximumSize(self.opt.loadSize[0]+30, self.opt.loadSize[1]+30)
 
         # show logo
@@ -114,8 +116,10 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
             raise NotImplementedError("Please choose a model")
         else:
             # define the model type and dataset type
+            # TODO: give supply parameters to model's opt for language. Add text_config path
             index = value-1
             self.opt.name = self.model_name[index]
+            self.opt.text_config = self.config_name[index]
             self.opt.img_file = self.img_root + self.img_files[index % len(self.img_files)]
         self.model = create_model(self.opt)
 
@@ -191,6 +195,10 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
     def set_input(self):
         """Set the input for the network"""
         # get the test mask from painter
+        # TODO: fit this process to text input
+        text = self.textEdit.toPlainText()
+        self.text_idx, self.text_len = util._caption_to_idx(self.model.wordtoix, text,  len(text))
+
         self.PaintPanel.saveDraw()
         buffer = QtCore.QBuffer()
         buffer.open(QtCore.QBuffer.ReadWrite)
@@ -209,8 +217,8 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
         else:
             mask = task.center_mask(img).unsqueeze(0)
         if len(self.opt.gpu_ids) > 0:
-            img = img.unsqueeze(0).cuda(self.opt.gpu_ids[0], async=True)
-            mask = mask.cuda(self.opt.gpu_ids[0], async=True)
+            img = img.unsqueeze(0).cuda(self.opt.gpu_ids[0])
+            mask = mask.cuda(self.opt.gpu_ids[0])
 
         # get I_m and I_c for image with mask and complement regions for training
         mask = mask
@@ -218,15 +226,20 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
         self.img_m = mask * self.img_truth
         self.img_c = (1 - mask) * self.img_truth
 
-        return self.img_m, self.img_c, self.img_truth, mask
+        return self.img_m, self.img_c, self.img_truth, mask, self.text_idx, self.text_len
 
     def fill_mask(self):
         """Forward to get the generation results"""
-        img_m, img_c, img_truth, mask = self.set_input()
+        # TODO: fit this process to text input
+        img_m, img_c, img_truth, mask, text_idx, text_len = self.set_input()
         if self.PaintPanel.iteration < 100:
             with torch.no_grad():
                 # encoder process
-                distributions, f = self.model.net_E(img_m)
+                word_embeddings, sentence_embedding = util.vectorize_captions_idx_batch(
+                                                text_idx, text_len, self.model.text_encoder)
+                img_mask = torch.ones_like(img_m)
+                img_mask[img_m == 0.] = 0.
+                distributions, f = self.model.net_E(img_m, sentence_embedding, word_embeddings, None, img_mask)
                 q_distribution = torch.distributions.Normal(distributions[-1][0], distributions[-1][1])
                 #q_distribution = torch.distributions.Normal( torch.zeros_like(distributions[-1][0]), torch.ones_like(distributions[-1][1]))
                 z = q_distribution.sample()
