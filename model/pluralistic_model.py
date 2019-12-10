@@ -33,7 +33,7 @@ class Pluralistic(BaseModel):
         """Initial the pluralistic model"""
         BaseModel.__init__(self, opt)
 
-        self.loss_names = ['kl_rec', 'kl_g', 'l1_rec', 'l1_g', 'gan_g', 'dis_img', 'ad_l2_rec', 'dis_img_rec', 'word', 'sentence']
+        self.loss_names = ['kl_rec', 'kl_g', 'l1_rec', 'l1_g', 'gan_g', 'dis_img', 'ad_l2_rec', 'dis_img_rec']
         self.log_names = []
         self.visual_names = ['img_m', 'img_truth', 'img_out', 'img_g', 'img_rec']
         self.text_names = ['text_positive']
@@ -61,15 +61,6 @@ class Pluralistic(BaseModel):
             self.L1loss = torch.nn.L1Loss()
             self.L2loss = torch.nn.MSELoss()
 
-            self.image_encoder = network.CNN_ENCODER(text_config.EMBEDDING_DIM)
-            state_dict = torch.load(\
-                text_config.IMAGE_ENCODER, map_location=lambda storage, loc: storage)
-            self.image_encoder.load_state_dict(state_dict)
-            self.image_encoder.eval()
-            if len(self.gpu_ids) > 0 and torch.cuda.is_available():
-                self.image_encoder.cuda()
-            base_function._freeze(self.image_encoder)
-
             # define the optimizer
             self.optimizer_G = torch.optim.Adam(itertools.chain(filter(lambda p: p.requires_grad, self.net_G.parameters()),
                         filter(lambda p: p.requires_grad, self.net_E.parameters())), lr=opt.lr, betas=(0.0, 0.999))
@@ -80,21 +71,6 @@ class Pluralistic(BaseModel):
             self.optimizers.append(self.optimizer_D)
         # load the pretrained model and schedulers
         self.setup(opt)
-
-    def _init_language_model(self, text_config):
-        x = pickle.load(open(text_config.VOCAB, 'rb'))
-        self.ixtoword = x[2]
-        self.wordtoix = x[3]
-
-        word_len = len(self.wordtoix)
-        self.text_encoder = network.RNN_ENCODER(word_len, nhidden=256)
-
-        state_dict = torch.load(text_config.LANGUAGE_ENCODER, map_location=lambda storage, loc: storage)
-        self.text_encoder.load_state_dict(state_dict)
-        self.text_encoder.eval()
-        self.text_encoder.requires_grad_(False)
-        if len(self.gpu_ids) > 0 and torch.cuda.is_available():
-            self.text_encoder.cuda()
 
     def set_input(self, input, epoch=0):
         """Unpack input data from the data loader and perform necessary pre-process steps"""
@@ -118,18 +94,6 @@ class Pluralistic(BaseModel):
         self.scale_img = task.scale_pyramid(self.img_truth, self.opt.output_scale)
         self.scale_mask = task.scale_pyramid(self.mask, self.opt.output_scale)
 
-        # About text stuff
-        self.text_positive = util.idx_to_caption(\
-                                    self.ixtoword, self.caption_idx[-1].tolist(), self.caption_length[-1].item())
-        self.word_embeddings, self.sentence_embedding = util.vectorize_captions_idx_batch(
-                                                    self.caption_idx, self.caption_length, self.text_encoder)
-        self.text_mask = util.lengths_to_mask(self.caption_length, max_length=self.word_embeddings.size(-1))
-        self.match_labels = torch.LongTensor(range(self.opt.batchSize))
-        if len(self.gpu_ids) > 0:
-            self.word_embeddings = self.word_embeddings.cuda(self.gpu_ids[0], True)
-            self.sentence_embedding = self.sentence_embedding.cuda(self.gpu_ids[0], True)
-            self.text_mask = self.text_mask.cuda(self.gpu_ids[0], True)
-            self.match_labels = self.match_labels.cuda(self.gpu_ids[0], True)
 
     def test(self):
         """Forward function used in test time"""
@@ -154,7 +118,7 @@ class Pluralistic(BaseModel):
         """Calculate encoder distribution for img_m, img_c only in train, all about distribution layer of VAE model"""
         # get distribution
         sum_valid = (torch.mean(self.mask.view(self.mask.size(0), -1), dim=1) - 1e-5).view(-1, 1, 1, 1)
-        m_sigma = 1 # / (1 + ((sum_valid - self.prior_alpha) * self.prior_beta).exp_())
+        m_sigma = 1 / (1 + ((sum_valid - self.prior_alpha) * self.prior_beta).exp_())
         p_distribution, q_distribution, kl_rec, kl_g = 0, 0, 0, 0
         self.distribution = []
         for distribution in distribution_factors:
@@ -256,13 +220,6 @@ class Pluralistic(BaseModel):
         D_fake = self.net_D_rec(self.img_rec[-1])
         D_real = self.net_D_rec(self.img_truth)
         self.loss_ad_l2_rec = self.L2loss(D_fake, D_real) * self.opt.lambda_gan
-
-        # Text-image consistent loss
-        loss_sentence = base_function.sent_loss(self.cnn_code, self.sentence_embedding, self.match_labels)
-        loss_word, _ = base_function.words_loss(self.region_features, self.word_embeddings, self.match_labels, \
-                                 self.caption_length, self.opt.batchSize)
-        self.loss_word = loss_word * self.opt.lambda_match
-        self.loss_sentence = loss_sentence * self.opt.lambda_match
 
         # calculate l1 loss ofr multi-scale, multi-depth-level outputs
         loss_l1_rec, loss_l1_g, log_PSNR_rec, log_PSNR_out = 0, 0, 0, 0
