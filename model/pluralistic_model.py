@@ -52,9 +52,6 @@ class Pluralistic(BaseModel):
         self.net_D = network.define_d(ndf=32, img_f=128, layers=5, model_type='ResDis', init_type='orthogonal', gpu_ids=opt.gpu_ids)
         self.net_D_rec = network.define_d(ndf=32, img_f=128, layers=5, model_type='ResDis', init_type='orthogonal', gpu_ids=opt.gpu_ids)
 
-        text_config = TextConfig(opt.text_config)
-        self._init_language_model(text_config)
-
         if self.isTrain:
             # define the loss functions
             self.GANloss = external_function.GANLoss(opt.gan_mode)
