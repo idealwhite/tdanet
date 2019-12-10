@@ -167,8 +167,6 @@ class Pluralistic(BaseModel):
             self.img_g.append(img_g)
         self.img_out = (1-self.mask) * self.img_g[-1].detach() + self.mask * self.img_truth
 
-        self.region_features, self.cnn_code = self.image_encoder(self.img_rec[-1])
-
 
     def backward_D_basic(self, netD, real, fake):
         """Calculate GAN loss for the discriminator"""
