@@ -544,9 +544,9 @@ class ImageTextAttention(nn.Module):
             weightedContext = self.forward_sigmoid(image, text, mask, image_mask, inverse_attention)
         else:
             weightedContext = self.forward_softmax(image, text, mask, image_mask, inverse_attention)
-        if self.pooling:
-            weightedContext = self.pooling_layer(weightedContext)
+        if self.pooling is not False:
             ih, iw = weightedContext.size(2), weightedContext.size(3)
+            weightedContext = self.pooling_layer(weightedContext)
             weightedContext = weightedContext.repeat(1, 1, ih, iw)
 
         return weightedContext
