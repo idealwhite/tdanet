@@ -197,7 +197,9 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
         # get the test mask from painter
         # TODO: fit this process to text input
         text = self.textEdit.toPlainText()
-        self.text_idx, self.text_len = util._caption_to_idx(self.model.wordtoix, text,  len(text))
+        text_idx, text_len = util._caption_to_idx(self.model.wordtoix, text,  len(text))
+        self.text_idx = torch.Tensor([text_idx]).long()
+        self.text_len = torch.Tensor([text_len]).long()
 
         self.PaintPanel.saveDraw()
         buffer = QtCore.QBuffer()
@@ -239,14 +241,14 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
                                                 text_idx, text_len, self.model.text_encoder)
                 img_mask = torch.ones_like(img_m)
                 img_mask[img_m == 0.] = 0.
-                distributions, f = self.model.net_E(img_m, sentence_embedding, word_embeddings, None, img_mask)
+                distributions, f, f_text = self.model.net_E(img_m, sentence_embedding, word_embeddings, None, img_mask)
                 q_distribution = torch.distributions.Normal(distributions[-1][0], distributions[-1][1])
                 #q_distribution = torch.distributions.Normal( torch.zeros_like(distributions[-1][0]), torch.ones_like(distributions[-1][1]))
                 z = q_distribution.sample()
 
                 # decoder process
                 scale_mask = task.scale_pyramid(mask, 4)
-                self.img_g, self.atten = self.model.net_G(z, f_m=f[-1], f_e=f[2], mask=scale_mask[0].chunk(3, dim=1)[0])
+                self.img_g, self.atten = self.model.net_G(z, f_text, f_e=f[2], mask=scale_mask[0].chunk(3, dim=1)[0])
                 self.img_out = (1 - mask) * self.img_g[-1].detach() + mask * img_m
 
                 # get score

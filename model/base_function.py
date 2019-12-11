@@ -485,10 +485,6 @@ class ImageTextAttention(nn.Module):
         weightedContext = weightedContext.view(batch_size, -1, ih, iw)
         attn = attn.view(batch_size, -1, ih, iw)
 
-        if self.pooling:
-            weightedContext = self.pooling_layer(weightedContext)
-            weightedContext = weightedContext.repeat(1, 1, ih, iw)
-
         return weightedContext
 
     def forward_sigmoid(self, image, text, mask=None, image_mask=None, inverse_attention=False):
@@ -541,17 +537,19 @@ class ImageTextAttention(nn.Module):
         weightedContext = weightedContext.view(batch_size, -1, ih, iw)
         attn = attn.view(batch_size, -1, ih, iw)
 
-        if self.pooling:
-            weightedContext = self.pooling_layer(weightedContext)
-            weightedContext = weightedContext.repeat(1, 1, ih, iw)
-
         return weightedContext
 
     def forward(self, image, text, mask=None, image_mask=None, inverse_attention=False):
         if self.multi_peak:
-            return self.forward_sigmoid(image, text, mask, image_mask, inverse_attention)
+            weightedContext = self.forward_sigmoid(image, text, mask, image_mask, inverse_attention)
         else:
-            return self.forward_softmax(image, text, mask, image_mask, inverse_attention)
+            weightedContext = self.forward_softmax(image, text, mask, image_mask, inverse_attention)
+        if self.pooling:
+            weightedContext = self.pooling_layer(weightedContext)
+            ih, iw = weightedContext.size(2), weightedContext.size(3)
+            weightedContext = weightedContext.repeat(1, 1, ih, iw)
+
+        return weightedContext
 
 class GlobalAttentionGeneral(nn.Module):
     """

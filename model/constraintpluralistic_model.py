@@ -6,10 +6,10 @@ import itertools
 from options.global_config import TextConfig
 import pickle
 
-class HiddenTextualPluralistic(BaseModel):
+class ConstraintPluralistic(BaseModel):
     """This class implements the pluralistic image completion, for 256*256 resolution image inpainting"""
     def name(self):
-        return "HiddenTextualPluralistic Image Completion"
+        return "ConstraintPluralistic Image Completion"
 
     @staticmethod
     def modify_options(parser, is_train=True):
@@ -45,8 +45,8 @@ class HiddenTextualPluralistic(BaseModel):
         self.prior_beta = opt.prior_beta
 
         # define the inpainting model
-        self.net_E = network.define_att_textual_e(ngf=32, z_nc=256, img_f=256, layers=5, norm='none', activation='LeakyReLU',
-                          init_type='orthogonal', gpu_ids=opt.gpu_ids, image_dim=256, text_dim=256, multi_peak=False, pool_attention='max')
+        self.net_E = network.define_constraint_e(ngf=32, z_nc=256, img_f=256, layers=5, norm='none', activation='LeakyReLU',
+                          init_type='orthogonal', gpu_ids=opt.gpu_ids, image_dim=256, text_dim=256, multi_peak=True, pool_attention=False)
         self.net_G = network.define_hidden_textual_g(f_text_dim=768, ngf=32, z_nc=256, img_f=256, L=0, layers=5, output_scale=opt.output_scale,
                                       norm='instance', activation='LeakyReLU', init_type='orthogonal', gpu_ids=opt.gpu_ids)
         # define the discriminator model
