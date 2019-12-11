@@ -515,7 +515,7 @@ class ConstraintResEncoder(nn.Module):
             image_mask = image_mask.chunk(3, dim=1)[0]
 
         if type(img_c) != type(None):
-            # adapt to word embedding, compute weighted word embedding with fm separately
+            # During training
             f_m_g, f_m_rec = feature[-1].chunk(2)
             img_mask_g = image_mask
             img_mask_rec = 1 - img_mask_g
@@ -525,18 +525,18 @@ class ConstraintResEncoder(nn.Module):
                         f_m_g, word_embeddings, mask=text_mask, image_mask=img_mask_g, inverse_attention=True)
 
             weighted_word_embedding =  torch.cat([weighted_word_embedding_g, weighted_word_embedding_rec])
-            distribution, f_text = self.two_paths(out, sentence_embedding, weighted_word_embedding)
+            distribution, f_text, dual_word_embedding = self.two_paths(out, sentence_embedding, weighted_word_embedding)
 
-            return distribution, feature, f_text
+            return distribution, feature, f_text, dual_word_embedding
         else:
-            # adapt to word embedding, compute weighted word embedding with fm of one path
+            # During test
             f_m = feature[-1]
             weighted_word_embedding = self.word_attention(
                 f_m, word_embeddings, mask=text_mask, image_mask=image_mask, inverse_attention=True)
 
-            distribution, f_m_text = self.one_path(out, sentence_embedding, weighted_word_embedding)
+            distribution, f_m_text, infered_word_embedding = self.one_path(out, sentence_embedding, weighted_word_embedding)
             f_text = torch.cat([f_m_text, weighted_word_embedding], dim=1)
-            return distribution, feature, f_text
+            return distribution, feature, f_text, None
 
     def one_path(self, f_in, sentence_embedding, weighted_word_embedding):
         """one path for baseline training or testing"""
@@ -552,7 +552,7 @@ class ConstraintResEncoder(nn.Module):
         # infer state
         for i in range(self.L):
             infer_prior_word = getattr(self, 'infer_prior_word' + str(i))
-            weighted_word_embedding = infer_prior_word(weighted_word_embedding)
+            infered_word_embedding = infer_prior_word(weighted_word_embedding)
 
         # get distribution
         # use sentence embedding here
@@ -560,13 +560,13 @@ class ConstraintResEncoder(nn.Module):
         sentence_dim = sentence_embedding.size(1)
         sentence_embedding_replication = sentence_embedding.view(-1, sentence_dim, 1, 1).repeat(1, 1, ix, iw)
         f_m_sent = torch.cat([f_m, sentence_embedding_replication], dim=1)
-        f_m_text = torch.cat([f_m_sent, weighted_word_embedding], dim=1)
+        f_m_text = torch.cat([f_m_sent, infered_word_embedding], dim=1)
 
         o = self.prior(f_m_text)
         q_mu, q_std = torch.split(o, self.z_nc, dim=1)
         distribution.append([q_mu, F.softplus(q_std)])
 
-        return distribution, f_m_sent
+        return distribution, f_m_sent, infered_word_embedding
 
     def two_paths(self, f_in, sentence_embedding, weighted_word_embedding):
         """two paths for the training"""
@@ -584,12 +584,14 @@ class ConstraintResEncoder(nn.Module):
         o = self.posterior(f_c_text)
         p_mu, p_std = torch.split(o, self.z_nc, dim=1)
 
-        distribution, f_m_sent = self.one_path(f_m, sentence_embedding, weighted_word_embedding_m)
+        distribution, f_m_sent, infered_word_embedding = self.one_path(f_m, sentence_embedding, weighted_word_embedding_m)
         distributions.append([p_mu, F.softplus(p_std), distribution[0][0], distribution[0][1]])
+        dual_word_embedding = torch.cat([infered_word_embedding, weighted_word_embedding_c], dim=0)
 
-        f_m_text = torch.cat([f_m_sent, weighted_word_embedding_m], dim=1)
-        f_c_text = torch.cat([f_m_sent, weighted_word_embedding_m], dim=1)
-        return distributions, torch.cat([f_m_text, f_c_text], dim=0)
+        f_m_text = torch.cat([f_m_sent, infered_word_embedding], dim=1)
+        f_c_text = torch.cat([f_m_sent, infered_word_embedding], dim=1)
+        
+        return distributions, torch.cat([f_m_text, f_c_text], dim=0), dual_word_embedding
 
 class ResGenerator(nn.Module):
     """

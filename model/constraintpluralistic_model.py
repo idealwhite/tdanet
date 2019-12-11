@@ -26,6 +26,7 @@ class ConstraintPluralistic(BaseModel):
             parser.add_argument('--lambda_kl', type=float, default=20.0, help='weight for kl divergence loss')
             parser.add_argument('--lambda_gan', type=float, default=1.0, help='weight for generation loss')
             parser.add_argument('--lambda_match', type=float, default=5.0, help='weight for image-text match loss')
+            parser.add_argument('--lambda_feature', type=float, default=1.0, help='weight for rec-g feature loss')
 
         return parser
 
@@ -34,7 +35,7 @@ class ConstraintPluralistic(BaseModel):
         BaseModel.__init__(self, opt)
 
         self.loss_names = ['kl_rec', 'kl_g', 'l1_rec', 'l1_g', 'gan_g', 'word_g', 'sentence_g', 'ad_l2_g',
-                           'gan_rec', 'ad_l2_rec', 'word_rec', 'sentence_rec',  'dis_img', 'dis_img_rec']
+                           'gan_rec', 'ad_l2_rec', 'word_rec', 'sentence_rec',  'dis_img', 'dis_img_rec', 'feature_distance']
         self.log_names = []
         self.visual_names = ['img_m', 'img_truth', 'img_c', 'img_out', 'img_g', 'img_rec']
         self.text_names = ['text_positive']
@@ -140,7 +141,7 @@ class ConstraintPluralistic(BaseModel):
 
         # encoder process
         # TOTEST: adapt to word embedding, call AttTextualResEncoder
-        distribution, f, f_text = self.net_E(
+        distribution, f, f_text, _ = self.net_E(
             self.img_m, self.sentence_embedding, self.word_embeddings, self.text_mask, self.mask)
         q_distribution = torch.distributions.Normal(distribution[-1][0], distribution[-1][1])
         scale_mask = task.scale_img(self.mask, size=[f[2].size(2), f[2].size(3)])
@@ -196,7 +197,7 @@ class ConstraintPluralistic(BaseModel):
     def forward(self):
         """Run forward processing to get the inputs"""
         # encoder process
-        distribution_factors, f, f_text = self.net_E(
+        distribution_factors, f, f_text, self.dual_word_embedding = self.net_E(
             self.img_m, self.sentence_embedding, self.word_embeddings, self.text_mask, self.mask, self.img_c)
 
         p_distribution, q_distribution, self.kl_rec, self.kl_g = self.get_distribution(distribution_factors)
@@ -230,7 +231,7 @@ class ConstraintPluralistic(BaseModel):
         # gradient penalty for wgan-gp
         if self.opt.gan_mode == 'wgangp':
             gradient_penalty, gradients = external_function.cal_gradient_penalty(netD, real, fake.detach())
-            D_loss +=gradient_penalty
+            D_loss += gradient_penalty
 
         D_loss.backward()
 
@@ -250,7 +251,10 @@ class ConstraintPluralistic(BaseModel):
         # encoder kl loss
         self.loss_kl_rec = self.kl_rec.mean() * self.opt.lambda_kl * self.opt.output_scale
         self.loss_kl_g = self.kl_g.mean() * self.opt.lambda_kl * self.opt.output_scale
-        # TODO: add feature distance of rec and g weighted word embedding
+
+        word_embedding_m, word_embedding_c = self.dual_word_embedding.chunk(2)
+        word_embedding_c = word_embedding_c.detach()
+        self.loss_feature_distance = self.opt.lambda_feature * self.L2loss(word_embedding_m, word_embedding_c)
 
         # generator adversarial loss
         base_function._freeze(self.net_D, self.net_D_rec)
