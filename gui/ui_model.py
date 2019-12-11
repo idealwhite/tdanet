@@ -32,7 +32,7 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
         self.graphicsView_2.setMaximumSize(self.opt.loadSize[0]+30, self.opt.loadSize[1]+30)
 
         # show logo
-        self.show_logo()
+        # self.show_logo()
 
         # original mask
         self.new_painter()

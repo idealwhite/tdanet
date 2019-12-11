@@ -132,26 +132,6 @@
       </item>
       <item>
        <property name="text">
-        <string>bird_center</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>place2_center</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>coco_center</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>flower_center</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
         <string>bird_random</string>
        </property>
       </item>
@@ -168,6 +148,26 @@
       <item>
        <property name="text">
         <string>flower_random</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>bird_center</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>place2_center</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>coco_center</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>flower_center</string>
        </property>
       </item>
      </widget>
