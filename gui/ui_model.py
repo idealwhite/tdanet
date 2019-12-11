@@ -23,8 +23,8 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
         self.show_result_flag = False
         self.opt.loadSize = [256, 256]
         self.visualizer = Visualizer(opt)
-        self.model_name = ['bird_center', 'place2_center', 'coco_center', 'flower_center',
-                           'bird_random', 'place2_random','coco_random', 'flower_random']
+        self.model_name = ['bird_random', 'place2_random','coco_random', 'flower_random',
+                           'bird_center', 'place2_center', 'coco_center', 'flower_center']
         self.config_name = ['config.bird.yml', 'config.place2.yml', 'config.coco.yml', 'config.flower.yml',
                            'config.bird.yml', 'config.place2.yml','config.coco.yml', 'config.flower.yml']
         self.img_root = './datasets/'
