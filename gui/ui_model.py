@@ -68,7 +68,7 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
         value = self.comboBox.currentIndex()
         img = Image.open(fname).convert('RGB')
         self.img_original = img.resize(self.opt.loadSize)
-        if value > 4:
+        if value < 4:
             self.img = self.img_original
         else:
             self.img = self.img_original
@@ -210,7 +210,8 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
         # transform the image to the tensor
         img = self.transform(self.img)
         value = self.comboBox.currentIndex()
-        if value > 4:
+
+        if value < 4:
             mask = torch.autograd.Variable(self.transform(pil_im)).unsqueeze(0)
             # mask from the random mask
             # mask = Image.open(self.mname)
@@ -218,6 +219,7 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
             mask = (mask < 1).float()
         else:
             mask = task.center_mask(img).unsqueeze(0)
+
         if len(self.opt.gpu_ids) > 0:
             img = img.unsqueeze(0).cuda(self.opt.gpu_ids[0])
             mask = mask.cuda(self.opt.gpu_ids[0])
