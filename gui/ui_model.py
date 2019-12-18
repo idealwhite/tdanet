@@ -28,7 +28,7 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
         self.config_name = ['config.bird.yml', 'config.place2.yml', 'config.coco.yml', 'config.flower.yml',
                            'config.bird.yml', 'config.place2.yml','config.coco.yml', 'config.flower.yml']
         self.img_root = './datasets/'
-        self.img_files = ['CUB_200_2011', 'place2', 'coco', 'flower']
+        self.img_files = ['CUB_200_2011/test.flist', 'place2', 'coco', 'flower']
         self.graphicsView_2.setMaximumSize(self.opt.loadSize[0]+30, self.opt.loadSize[1]+30)
 
         # show logo
@@ -116,7 +116,6 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
             raise NotImplementedError("Please choose a model")
         else:
             # define the model type and dataset type
-            # TODO: give supply parameters to model's opt for language. Add text_config path
             index = value-1
             self.opt.name = self.model_name[index]
             self.opt.text_config = self.config_name[index]
@@ -130,7 +129,6 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
 
     def random_image(self):
         """Random load the test image"""
-
         # read random mask
         if self.opt.mask_file != "none":
             mask_paths, mask_size = make_dataset(self.opt.mask_file)
@@ -234,8 +232,10 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
 
     def fill_mask(self):
         """Forward to get the generation results"""
-        # TODO: fit this process to text input
         img_m, img_c, img_truth, mask, text_idx, text_len = self.set_input()
+        if text_len < 1:
+            self.textEdit.setText('Input some words about this bird or the bird you want.')
+            return
         if self.PaintPanel.iteration < 100:
             with torch.no_grad():
                 # encoder process

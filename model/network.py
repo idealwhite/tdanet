@@ -536,7 +536,7 @@ class ConstraintResEncoder(nn.Module):
 
             distribution, f_m_text, infered_word_embedding = self.one_path(out, sentence_embedding, weighted_word_embedding)
             f_text = torch.cat([f_m_text, weighted_word_embedding], dim=1)
-            return distribution, feature, f_text, None
+            return distribution, feature, f_text
 
     def one_path(self, f_in, sentence_embedding, weighted_word_embedding):
         """one path for baseline training or testing"""
@@ -589,8 +589,9 @@ class ConstraintResEncoder(nn.Module):
         dual_word_embedding = torch.cat([infered_word_embedding, weighted_word_embedding_c], dim=0)
 
         f_m_text = torch.cat([f_m_sent, infered_word_embedding], dim=1)
+        # TODO: evaluate wether to replace infered to weighted_c
         f_c_text = torch.cat([f_m_sent, infered_word_embedding], dim=1)
-        
+
         return distributions, torch.cat([f_m_text, f_c_text], dim=0), dual_word_embedding
 
 class ResGenerator(nn.Module):

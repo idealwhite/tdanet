@@ -141,7 +141,7 @@ class ConstraintPluralistic(BaseModel):
 
         # encoder process
         # TOTEST: adapt to word embedding, call AttTextualResEncoder
-        distribution, f, f_text, _ = self.net_E(
+        distribution, f, f_text = self.net_E(
             self.img_m, self.sentence_embedding, self.word_embeddings, self.text_mask, self.mask)
         q_distribution = torch.distributions.Normal(distribution[-1][0], distribution[-1][1])
         scale_mask = task.scale_img(self.mask, size=[f[2].size(2), f[2].size(3)])

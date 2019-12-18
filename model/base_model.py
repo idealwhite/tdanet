@@ -38,7 +38,7 @@ class BaseModel():
         if self.isTrain:
             self.schedulers = [base_function.get_scheduler(optimizer, opt) for optimizer in self.optimizers]
         if not self.isTrain or opt.continue_train:
-            self.load_networks(opt.which_iter)
+            self.load_networks(opt.which_iter, opt.gpu_ids)
 
     def eval(self):
         """Make models eval mode during test time"""
@@ -124,7 +124,7 @@ class BaseModel():
                     net.cuda()
 
     # load models
-    def load_networks(self, which_epoch):
+    def load_networks(self, which_epoch, gpu_ids):
         """Load all the networks from the disk"""
         for name in self.model_names:
             if isinstance(name, str):
@@ -132,9 +132,13 @@ class BaseModel():
                 path = os.path.join(self.save_dir, filename)
                 net = getattr(self, 'net_' + name)
                 try:
-                    net.load_state_dict(torch.load(path))
-                except:
                     pretrained_dict = torch.load(path)
+                    if len(gpu_ids) != 0:
+                        net.load_state_dict(pretrained_dict)
+                    else:
+                        pretrained_dict_cpu = {key[7:]:value for key, value in pretrained_dict.items()}
+                        net.load_state_dict(pretrained_dict_cpu)
+                except:
                     model_dict = net.state_dict()
                     try:
                         pretrained_dict = {k:v for k,v in pretrained_dict.items() if k in model_dict}
