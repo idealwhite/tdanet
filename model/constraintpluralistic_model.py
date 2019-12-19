@@ -26,7 +26,6 @@ class ConstraintPluralistic(BaseModel):
             parser.add_argument('--lambda_kl', type=float, default=20.0, help='weight for kl divergence loss')
             parser.add_argument('--lambda_gan', type=float, default=1.0, help='weight for generation loss')
             parser.add_argument('--lambda_match', type=float, default=5.0, help='weight for image-text match loss')
-            parser.add_argument('--lambda_feature', type=float, default=1.0, help='weight for rec-g feature loss')
 
         return parser
 

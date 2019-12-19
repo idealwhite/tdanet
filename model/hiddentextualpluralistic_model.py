@@ -21,6 +21,7 @@ class HiddenTextualPluralistic(BaseModel):
 
         if is_train:
             parser.add_argument('--train_paths', type=str, default='two', help='training strategies with one path or two paths')
+            parser.add_argument('--dynamic_sigma', action='store_true', help='change sigma base on mask area')
             parser.add_argument('--lambda_rec_l1', type=float, default=20.0, help='weight for image reconstruction loss')
             parser.add_argument('--lambda_gen_l1', type=float, default=20.0, help='weight for image reconstruction loss')
             parser.add_argument('--lambda_kl', type=float, default=20.0, help='weight for kl divergence loss')
@@ -142,7 +143,8 @@ class HiddenTextualPluralistic(BaseModel):
         # TOTEST: adapt to word embedding, call AttTextualResEncoder
         distribution, f, f_text = self.net_E(
             self.img_m, self.sentence_embedding, self.word_embeddings, self.text_mask, self.mask)
-        q_distribution = torch.distributions.Normal(distribution[-1][0], distribution[-1][1])
+        variation_factor = 1. if self.opt.no_variation else 0.
+        q_distribution = torch.distributions.Normal(distribution[-1][0], distribution[-1][1] * variation_factor)
         scale_mask = task.scale_img(self.mask, size=[f[2].size(2), f[2].size(3)])
 
         # decoder process
@@ -158,7 +160,7 @@ class HiddenTextualPluralistic(BaseModel):
         """Calculate encoder distribution for img_m, img_c only in train, all about distribution layer of VAE model"""
         # get distribution
         sum_valid = (torch.mean(self.mask.view(self.mask.size(0), -1), dim=1) - 1e-5).view(-1, 1, 1, 1)
-        m_sigma = 1 # / (1 + ((sum_valid - self.prior_alpha) * self.prior_beta).exp_())
+        m_sigma = 1 / (1 + ((sum_valid - self.prior_alpha) * self.prior_beta).exp_()) if self.opt.dynamic_sigma else 1
         p_distribution, q_distribution, kl_rec, kl_g = 0, 0, 0, 0
         self.distribution = []
         for distribution in distribution_factors:
