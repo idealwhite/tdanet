@@ -143,7 +143,7 @@ class HiddenTextualPluralistic(BaseModel):
         # TOTEST: adapt to word embedding, call AttTextualResEncoder
         distribution, f, f_text = self.net_E(
             self.img_m, self.sentence_embedding, self.word_embeddings, self.text_mask, self.mask)
-        variation_factor = 1. if self.opt.no_variation else 0.
+        variation_factor = 0. if self.opt.no_variance else 1.
         q_distribution = torch.distributions.Normal(distribution[-1][0], distribution[-1][1] * variation_factor)
         scale_mask = task.scale_img(self.mask, size=[f[2].size(2), f[2].size(3)])
 

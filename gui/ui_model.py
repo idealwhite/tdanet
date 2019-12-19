@@ -244,7 +244,7 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
                 img_mask = torch.ones_like(img_m)
                 img_mask[img_m == 0.] = 0.
                 distributions, f, f_text = self.model.net_E(img_m, sentence_embedding, word_embeddings, None, img_mask)
-                variation_factor = 1. if self.opt.no_variation else 0.
+                variation_factor = 0. if self.opt.no_variance else 1.
                 q_distribution = torch.distributions.Normal(distributions[-1][0], distributions[-1][1] * variation_factor)
                 #q_distribution = torch.distributions.Normal( torch.zeros_like(distributions[-1][0]), torch.ones_like(distributions[-1][1]))
                 z = q_distribution.sample()
