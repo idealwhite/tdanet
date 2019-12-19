@@ -160,7 +160,7 @@ class HiddenTextualPluralistic(BaseModel):
         """Calculate encoder distribution for img_m, img_c only in train, all about distribution layer of VAE model"""
         # get distribution
         sum_valid = (torch.mean(self.mask.view(self.mask.size(0), -1), dim=1) - 1e-5).view(-1, 1, 1, 1)
-        m_sigma = 1 / (1 + ((sum_valid - self.prior_alpha) * self.prior_beta).exp_()) if self.opt.dynamic_sigma else 1
+        m_sigma = 1 if not self.opt.dynamic_sigma else (1 / (1 + ((sum_valid - self.prior_alpha) * self.prior_beta).exp_()))
         p_distribution, q_distribution, kl_rec, kl_g = 0, 0, 0, 0
         self.distribution = []
         for distribution in distribution_factors:
