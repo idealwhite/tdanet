@@ -1,7 +1,7 @@
 from gui.ui_window import Ui_Form
 from gui.ui_draw import *
 from PIL import Image, ImageQt
-import random, io, os
+import random, io, os, math
 import numpy as np
 import torch
 import torchvision.transforms as transforms
@@ -9,7 +9,29 @@ from util import task, util
 from dataloader.image_folder import make_dataset
 from model import create_model
 from util.visualizer import Visualizer
+from options.global_config import TextConfig
+import json
+import pickle
 
+def compute_errors(ground_truth, pre):
+
+    # l1 loss
+    l1 = np.mean(np.abs(ground_truth-pre))
+
+    # PSNR
+    mse = np.mean((ground_truth - pre) ** 2)
+    if mse == 0:
+        PSNR = 100
+    else:
+        PSNR = 20 * math.log10(255.0 / math.sqrt(mse))
+
+    # TV
+    gx = pre - np.roll(pre, -1, axis=1)
+    gy = pre - np.roll(pre, -1, axis=0)
+    grad_norm2 = gx ** 2 + gy ** 2
+    TV = np.mean(np.sqrt(grad_norm2))
+
+    return l1, PSNR, TV
 
 class ui_model(QtWidgets.QWidget, Ui_Form):
     shape = 'line'
@@ -122,6 +144,29 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
             self.opt.img_file = self.img_root + self.img_files[index % len(self.img_files)]
         self.model = create_model(self.opt)
 
+        self.image_paths, self.image_size = make_dataset(self.opt.img_file)
+
+        text_config = TextConfig(self.opt.text_config)
+        self.max_length = text_config.MAX_TEXT_LENGTH
+        if 'coco' in text_config.CAPTION.lower():
+            self.num_captions = 5
+        elif 'place' in text_config.CAPTION.lower():
+            self.num_captions = 1
+        else:
+            self.num_captions = 10
+
+        # load caption file
+        with open(text_config.CAPTION, 'r') as f:
+            self.captions = json.load(f)
+        with open(text_config.CATE_IMAGE_TRAIN, 'r') as f:
+            self.category_images_train = json.load(f)
+        with open(text_config.IMAGE_CATE_TRAIN, 'r') as f:
+            self.images_category = json.load(f)
+
+        x = pickle.load(open(text_config.VOCAB, 'rb'))
+        self.ixtoword = x[2]
+        self.wordtoix = x[3]
+
     def load_image(self):
         """Load the image"""
         self.fname, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'select the image', self.opt.img_file, 'Image files(*.jpg *.png)')
@@ -129,16 +174,23 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
 
     def random_image(self):
         """Random load the test image"""
+        value = self.comboBox.currentIndex()
+        if value == 0:
+            return
         # read random mask
         if self.opt.mask_file != "none":
             mask_paths, mask_size = make_dataset(self.opt.mask_file)
             item = random.randint(0, mask_size - 1)
             self.mname = mask_paths[item]
 
-        image_paths, image_size = make_dataset(self.opt.img_file)
-        item = random.randint(0, image_size-1)
-        self.fname = image_paths[item]
+        item = random.randint(0, self.image_size-1)
+        self.fname = self.image_paths[item]
+        self.fname = './datasets/CUB_200_2011\images/169.Magnolia_Warbler/Magnolia_Warbler_0063_166121.jpg'
         self.showImage(self.fname)
+
+        img_name = os.path.basename(self.fname)
+        caption = sorted(self.captions[img_name], key=lambda x:len(x))[0]
+        self.textEdit.setText(caption)
 
     def save_result(self):
         """Save the results to the disk"""
@@ -193,7 +245,6 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
     def set_input(self):
         """Set the input for the network"""
         # get the test mask from painter
-        # TODO: fit this process to text input
         text = self.textEdit.toPlainText()
         text_idx, text_len = util._caption_to_idx(self.model.wordtoix, text,  len(text))
         self.text_idx = torch.Tensor([text_idx]).long()
@@ -244,7 +295,7 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
                 img_mask = torch.ones_like(img_m)
                 img_mask[img_m == 0.] = 0.
                 distributions, f, f_text = self.model.net_E(img_m, sentence_embedding, word_embeddings, None, img_mask)
-                variation_factor = 0. if self.opt.no_variance else 1.
+                variation_factor = 1. if self.checkBox.isChecked() else 0.
                 q_distribution = torch.distributions.Normal(distributions[-1][0], distributions[-1][1] * variation_factor)
                 #q_distribution = torch.distributions.Normal( torch.zeros_like(distributions[-1][0]), torch.ones_like(distributions[-1][1]))
                 z = q_distribution.sample()
@@ -255,8 +306,10 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
                 self.img_out = (1 - mask) * self.img_g[-1].detach() + mask * img_m
 
                 # get score
-                score =self.model.net_D(self.img_out).mean()
-                self.label_6.setText(str(round(score.item(),3)))
+                l1, PSNR, TV = compute_errors(util.tensor2im(self.img_truth), util.tensor2im(self.img_out.detach()))
+
+                self.label_6.setText(str(PSNR))
+
                 self.PaintPanel.iteration += 1
 
         self.show_result_flag = True

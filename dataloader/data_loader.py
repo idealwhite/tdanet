@@ -138,7 +138,7 @@ class CreateDataset(data.Dataset):
 
 def dataloader(opt):
     datasets = CreateDataset(opt)
-    dataset = data.DataLoader(datasets, batch_size=opt.batchSize, shuffle=not opt.no_shuffle, num_workers=int(opt.nThreads))
+    dataset = data.DataLoader(datasets, batch_size=opt.batchSize, shuffle=not opt.no_shuffle, num_workers=int(opt.nThreads), pin_memory=True)
 
     return dataset
 

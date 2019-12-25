@@ -36,7 +36,6 @@ class Pluralistic(BaseModel):
         self.loss_names = ['kl_rec', 'kl_g', 'l1_rec', 'l1_g', 'gan_g', 'dis_img', 'ad_l2_rec', 'dis_img_rec']
         self.log_names = []
         self.visual_names = ['img_m', 'img_truth', 'img_out', 'img_g', 'img_rec']
-        self.text_names = ['text_positive']
         self.value_names = ['u_m', 'sigma_m', 'u_post', 'sigma_post', 'u_prior', 'sigma_prior']
         self.model_names = ['E', 'G', 'D', 'D_rec']
         self.distribution = []
