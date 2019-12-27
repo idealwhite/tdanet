@@ -3,7 +3,4 @@ VOCAB: ./datasets/captions_vocab_bird.pickle
 LANGUAGE_ENCODER: ./datasets/text_encoder_bird.pth
 IMAGE_ENCODER: ./datasets/image_encoder_bird.pth
 
-CATE_IMAGE_TRAIN: ./datasets/CUB_200_2011/cate_image_train.json
-IMAGE_CATE_TRAIN: ./datasets/CUB_200_2011/image_cate.json
-
 CAPTION: ./datasets/CUB_200_2011/caption.json
