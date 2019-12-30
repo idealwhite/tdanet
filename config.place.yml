@@ -3,4 +3,4 @@ VOCAB: ./datasets/captions_vocab_coco.pickle
 LANGUAGE_ENCODER: ./datasets/text_encoder_coco.pth
 IMAGE_ENCODER: ./datasets/image_encoder_coco.pth
 
-CAPTION: ./datasets/CUB_200_2011/caption.json
+CAPTION: ./datasets/place2/caption.json
