@@ -154,7 +154,7 @@ class HiddenTextualPluralistic(BaseModel):
             self.img_g, attn = self.net_G(z, f_text, f_e=f[2], mask=scale_mask.chunk(3, dim=1)[0])
             self.img_out = (1 - self.mask) * self.img_g[-1].detach() + self.mask * self.img_m
             self.score = self.net_D(self.img_out)
-            self.save_results(self.img_out, i, mark, data_name='out')
+            self.save_results(self.img_out, i, data_name='out', mark=mark)
 
     def get_distribution(self, distribution_factors):
         """Calculate encoder distribution for img_m, img_c only in train, all about distribution layer of VAE model"""
