@@ -12,6 +12,7 @@ from util.visualizer import Visualizer
 from options.global_config import TextConfig
 import json
 import pickle
+import time
 
 def compute_errors(ground_truth, pre):
 
@@ -85,6 +86,8 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
         # show the result
         self.pushButton_6.clicked.connect(self.show_result)
 
+        self.firstly=True
+
     def showImage(self, fname):
         """Show the masked images"""
         value = self.comboBox.currentIndex()
@@ -116,20 +119,7 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
 
     def show_logo(self):
         """Show the logo of NTU and BTC"""
-        img = QtWidgets.QLabel(self)
-        img.setGeometry(650, 20, 140, 50)
-        # read images
-        pixmap = QtGui.QPixmap("./gui/logo/NTU_logo.jpg")
-        pixmap = pixmap.scaled(140, 140, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
-        img.setPixmap(pixmap)
-        img.show()
-        img1 = QtWidgets.QLabel(self)
-        img1.setGeometry(800, 20, 70, 50)
-        # read images
-        pixmap1 = QtGui.QPixmap("./gui/logo/BTC_logo.png")
-        pixmap1 = pixmap1.scaled(70, 70, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
-        img1.setPixmap(pixmap1)
-        img1.show()
+        return
 
     def load_model(self):
         """Load different kind models for different datasets and mask types"""
@@ -185,12 +175,20 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
 
         item = random.randint(0, self.image_size-1)
         self.fname = self.image_paths[item]
-        self.fname = './datasets/CUB_200_2011\images/169.Magnolia_Warbler/Magnolia_Warbler_0063_166121.jpg'
+        if self.firstly:
+            self.fname = './datasets/CUB_200_2011\\images/100.Brown_Pelican/Brown_Pelican_0123_94368.jpg'
+            self.firstly = False
         self.showImage(self.fname)
+        print(self.fname)
 
         img_name = os.path.basename(self.fname)
         caption = sorted(self.captions[img_name], key=lambda x:len(x))[0]
         self.textEdit.setText(caption)
+
+    def random_caption(self):
+        img_name = os.path.basename(self.fname)
+        captions = self.captions[img_name]
+        random.randint(0, len(captions))
 
     def save_result(self):
         """Save the results to the disk"""
@@ -284,10 +282,14 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
     def fill_mask(self):
         """Forward to get the generation results"""
         img_m, img_c, img_truth, mask, text_idx, text_len = self.set_input()
+        if self.comboBox.currentIndex() == 0:
+            return
         if text_len < 1:
             self.textEdit.setText('Input some words about this bird or the bird you want.')
             return
+        print(self.textEdit.toPlainText())
         if self.PaintPanel.iteration < 100:
+            print(self.PaintPanel.iteration)
             with torch.no_grad():
                 # encoder process
                 word_embeddings, sentence_embedding = util.vectorize_captions_idx_batch(
@@ -313,4 +315,5 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
                 self.PaintPanel.iteration += 1
 
         self.show_result_flag = True
+        import ipdb; ipdb.set_trace()
         self.show_result()

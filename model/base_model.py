@@ -161,7 +161,7 @@ class BaseModel():
                 if not self.isTrain:
                     net.eval()
 
-    def save_results(self, save_data, score=None, data_name='none'):
+    def save_results(self, save_data, score=None, data_name='none', mark=None):
         """Save the training or testing results to disk"""
         img_paths = self.get_image_paths()
 
@@ -174,7 +174,10 @@ class BaseModel():
             else:
                 # d_score = score[i].mean()
                 # img_name = '%s_%s_%s.png' % (name, data_name, str(round(d_score.item(), 3)))
-                img_name = '%s_%s_%s.png' % (name, data_name, str(score))
+                if type(mark) == type(None):
+                    img_name = '%s_%s_%s.png' % (name, data_name, str(score))
+                else:
+                    img_name = '%s_%s_%s_%s.png' % (name, data_name, str(score), str(mark))
             # save predicted image with discriminator score
             util.mkdir(self.opt.results_dir)
             img_path = os.path.join(self.opt.results_dir, img_name)
