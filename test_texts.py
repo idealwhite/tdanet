@@ -18,7 +18,7 @@ if __name__=='__main__':
     # create a visualizer
     visualizer = visualizer.Visualizer(opt)
 
-    for t in range(dataset.num_captions):
+    for t in range(opt.ncaptions):
         for i, data in enumerate(dataset):
             if i > opt.how_many:
                 break

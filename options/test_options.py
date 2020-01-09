@@ -9,6 +9,7 @@ class TestOptions(BaseOptions):
         parser.add_argument('--how_many', type=int, default=200, help='how many test images to run')
         parser.add_argument('--phase', type=str, default='test', help='train, val, test')
         parser.add_argument('--nsampling', type=int, default=50, help='ramplimg # times for each images')
+        parser.add_argument('--ncaptions', type=int, default=10, help='Number of captions for each image')
         parser.add_argument('--save_number', type=int, default=10, help='choice # reasonable results based on the discriminator score')
         parser.add_argument('--no_variance', action='store_true', help='set variation to 0 when generate')
 
