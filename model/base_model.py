@@ -131,8 +131,8 @@ class BaseModel():
                 filename = '%s_net_%s.pth' % (which_epoch, name)
                 path = os.path.join(self.save_dir, filename)
                 net = getattr(self, 'net_' + name)
+                pretrained_dict = torch.load(path)
                 try:
-                    pretrained_dict = torch.load(path)
                     if len(gpu_ids) != 0:
                         net.load_state_dict(pretrained_dict)
                     else:

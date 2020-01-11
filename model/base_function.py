@@ -485,6 +485,8 @@ class ImageTextAttention(nn.Module):
         weightedContext = weightedContext.view(batch_size, -1, ih, iw)
         attn = attn.view(batch_size, -1, ih, iw)
 
+        torch.save(attn.detach(), 'attention_map_rec.pt')
+
         return weightedContext
 
     def forward_sigmoid(self, image, text, mask=None, image_mask=None, inverse_attention=False):

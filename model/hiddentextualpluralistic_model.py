@@ -26,7 +26,7 @@ class HiddenTextualPluralistic(BaseModel):
             parser.add_argument('--lambda_gen_l1', type=float, default=20.0, help='weight for image reconstruction loss')
             parser.add_argument('--lambda_kl', type=float, default=20.0, help='weight for kl divergence loss')
             parser.add_argument('--lambda_gan', type=float, default=1.0, help='weight for generation loss')
-            parser.add_argument('--lambda_match', type=float, default=5.0, help='weight for image-text match loss')
+            parser.add_argument('--lambda_match', type=float, default=0.1, help='weight for image-text match loss')
 
         return parser
 
