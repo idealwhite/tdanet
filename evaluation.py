@@ -71,16 +71,15 @@ if __name__ == "__main__":
 
             for k in range(num_image_files-1):
                 index2 = k
-                try:
-                    pre_image = Image.open(pre_paths[index2]).resize([256,256]).convert('RGB')
-                    pre_numpy = np.array(pre_image).astype(np.float32)
-                    l1_temp, PSNR_temp, TV_temp, SSIM_temp = compute_errors(ground_truth_numpy, pre_numpy)
-                    # select the best results for the errors estimation
-                    if l1_temp - PSNR_temp + TV_temp - SSIM_temp < l1_sample - PSNR_sample + TV_sample - SSIM_temp:
-                        l1_sample, PSNR_sample, TV_sample, SSIM_temp = l1_temp, PSNR_temp, TV_temp, SSIM_temp
-                        best_index = index2
-                except:
-                    print(pre_paths[index2])
+
+                pre_image = Image.open(pre_paths[index2]).resize([256,256]).convert('RGB')
+                pre_numpy = np.array(pre_image).astype(np.float32)
+                l1_temp, PSNR_temp, TV_temp, SSIM_temp = compute_errors(ground_truth_numpy, pre_numpy)
+                # select the best results for the errors estimation
+                if l1_temp - PSNR_temp + TV_temp - SSIM_temp < l1_sample - PSNR_sample + TV_sample - SSIM_temp:
+                    l1_sample, PSNR_sample, TV_sample, SSIM_temp = l1_temp, PSNR_temp, TV_temp, SSIM_temp
+                    best_index = index2
+
             # shutil.copy(pre_paths[best_index], '/media/lyndon/c6f4bbbd-8d47-4dcb-b0db-d788fe2b2557/dataset/image_painting/results/ours/imagenet/center_copy/')
             # print(pre_paths[best_index])
             # print(l1_sample, PSNR_sample, TV_sample)
