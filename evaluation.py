@@ -94,4 +94,4 @@ if __name__ == "__main__":
         SSIM[i] = np.mean(SSIM_batch)
 
     print('{:>10},{:>10},{:>10},{:>10}'.format('L1_LOSS', 'PSNR', 'TV','SSIM'))
-    print('{:10.4f},{:10.4f},{:10.4f}'.format(l1_loss.mean(), PSNR.mean(), TV.mean(), SSIM.mean()))
+    print('{:10.4f},{:10.4f},{:10.4f},{:10.4f}'.format(l1_loss.mean(), PSNR.mean(), TV.mean(), SSIM.mean()))
