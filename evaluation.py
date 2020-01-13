@@ -36,7 +36,7 @@ def compute_errors(ground_truth, pre):
     gy = pre - np.roll(pre, -1, axis=0)
     grad_norm2 = gx ** 2 + gy ** 2
     TV = np.mean(np.sqrt(grad_norm2))
-    SSIM,_,_ = ssim(ground_truth, pre, multichannel=True, data_range=pre.max()-pre.min(), sigma=1.5)
+    SSIM = ssim(ground_truth, pre, multichannel=True, data_range=pre.max()-pre.min(), sigma=1.5)
 
     return l1, PSNR, TV, SSIM
 
