@@ -7,7 +7,7 @@ import os
 import glob
 import shutil
 from tqdm import tqdm
-from skimage.metrics import structural_similarity as ssim
+from skimage.measure import compare_ssim as ssim
 
 parser = argparse.ArgumentParser(description='Evaluation ont the dataset')
 parser.add_argument('--ground_truth_path', type = str, default='dataset/image_painting/imagenet_test.txt',
@@ -36,7 +36,7 @@ def compute_errors(ground_truth, pre):
     gy = pre - np.roll(pre, -1, axis=0)
     grad_norm2 = gx ** 2 + gy ** 2
     TV = np.mean(np.sqrt(grad_norm2))
-    SSIM = ssim(ground_truth, pre, data_range=pre.max()-pre.min())
+    SSIM,_,_ = ssim(ground_truth, pre, data_range=pre.max()-pre.min())
 
     return l1, PSNR, TV, SSIM
 
