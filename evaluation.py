@@ -74,10 +74,10 @@ if __name__ == "__main__":
                 try:
                     pre_image = Image.open(pre_paths[index2]).resize([256,256]).convert('RGB')
                     pre_numpy = np.array(pre_image).astype(np.float32)
-                    l1_temp, PSNR_temp, TV_temp = compute_errors(ground_truth_numpy, pre_numpy)
+                    l1_temp, PSNR_temp, TV_temp, SSIM_temp = compute_errors(ground_truth_numpy, pre_numpy)
                     # select the best results for the errors estimation
-                    if l1_temp - PSNR_temp + TV_temp < l1_sample - PSNR_sample + TV_sample:
-                        l1_sample, PSNR_sample, TV_sample = l1_temp, PSNR_temp, TV_temp
+                    if l1_temp - PSNR_temp + TV_temp - SSIM_temp < l1_sample - PSNR_sample + TV_sample - SSIM_temp:
+                        l1_sample, PSNR_sample, TV_sample, SSIM_temp = l1_temp, PSNR_temp, TV_temp, SSIM_temp
                         best_index = index2
                 except:
                     print(pre_paths[index2])
