@@ -2,3 +2,5 @@
 ./datasets/*
 *.pyc
 ./checkpoints
+*.png
+*.pt
