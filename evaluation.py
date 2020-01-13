@@ -50,11 +50,13 @@ if __name__ == "__main__":
     l1_loss = np.zeros(iters, np.float32)
     PSNR = np.zeros(iters, np.float32)
     TV = np.zeros(iters, np.float32)
+    SSIM = np.zeros(iters, np.float32)
 
     for i in tqdm(range(0, iters)):
         l1_batch = np.zeros(args.batch_test, np.float32)
         PSNR_batch = np.zeros(args.batch_test, np.float32)
         TV_batch = np.zeros(args.batch_test, np.float32)
+        SSIM_batch = np.zeros(args.batch_test, np.float32)
 
         num = i*args.batch_test
 
@@ -77,18 +79,19 @@ if __name__ == "__main__":
                 l1_temp, PSNR_temp, TV_temp, SSIM_temp = compute_errors(ground_truth_numpy, pre_numpy)
                 # select the best results for the errors estimation
                 if l1_temp - PSNR_temp + TV_temp - SSIM_temp < l1_sample - PSNR_sample + TV_sample - SSIM_temp:
-                    l1_sample, PSNR_sample, TV_sample, SSIM_temp = l1_temp, PSNR_temp, TV_temp, SSIM_temp
+                    l1_sample, PSNR_sample, TV_sample, SSIM_sample = l1_temp, PSNR_temp, TV_temp, SSIM_temp
                     best_index = index2
 
             # shutil.copy(pre_paths[best_index], '/media/lyndon/c6f4bbbd-8d47-4dcb-b0db-d788fe2b2557/dataset/image_painting/results/ours/imagenet/center_copy/')
             # print(pre_paths[best_index])
             # print(l1_sample, PSNR_sample, TV_sample)
 
-            l1_batch[j], PSNR_batch[j], TV_batch[j] = l1_sample, PSNR_sample, TV_sample
+            l1_batch[j], PSNR_batch[j], TV_batch[j], SSIM_batch[j] = l1_sample, PSNR_sample, TV_sample, SSIM_sample
 
         l1_loss[i] = np.mean(l1_batch)
         PSNR[i] = np.mean(PSNR_batch)
         TV[i] = np.mean(TV_batch)
+        SSIM[i] = np.mean(SSIM_batch)
 
-    print('{:>10},{:>10},{:>10}'.format('L1_LOSS', 'PSNR', 'TV'))
-    print('{:10.4f},{:10.4f},{:10.4f}'.format(l1_loss.mean(), PSNR.mean(), TV.mean()))
+    print('{:>10},{:>10},{:>10},{:>10}'.format('L1_LOSS', 'PSNR', 'TV','SSIM'))
+    print('{:10.4f},{:10.4f},{:10.4f}'.format(l1_loss.mean(), PSNR.mean(), TV.mean(), SSIM.mean()))
