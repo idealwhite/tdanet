@@ -9,8 +9,8 @@ if __name__=='__main__':
     # get testing options
     opt = test_options.TestOptions().parse()
     # creat a dataset
-    dataset = data_loader.dataloader(opt)
-    dataset_size = len(dataset) * opt.batchSize
+    dataloader = data_loader.dataloader(opt)
+    dataset_size = len(dataloader) * opt.batchSize
     print('testing images = %d' % dataset_size)
     # create a model
     model = create_model(opt)
@@ -19,8 +19,8 @@ if __name__=='__main__':
     visualizer = visualizer.Visualizer(opt)
 
     for t in range(opt.ncaptions):
-        for i, data in enumerate(dataset):
-            dataset.epoch = t
+        for i, data in enumerate(dataloader):
+            dataloader.dataset.epoch = t
             if i > opt.how_many:
                 break
             model.set_input(data)
