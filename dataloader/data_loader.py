@@ -38,8 +38,12 @@ class CreateDataset(data.Dataset):
         self.ixtoword = x[2]
         self.wordtoix = x[3]
 
+        self.epoch = 0 # Used for iter on captions.
+
     def __getitem__(self, index):
         # load image
+        index = self.epoch*len(self)+index
+
         img, img_path = self.load_img(index)
         # load mask
         mask = self.load_mask(img, index)

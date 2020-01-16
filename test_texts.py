@@ -20,6 +20,7 @@ if __name__=='__main__':
 
     for t in range(opt.ncaptions):
         for i, data in enumerate(dataset):
+            dataset.epoch = t
             if i > opt.how_many:
                 break
             model.set_input(data)
