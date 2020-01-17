@@ -42,7 +42,7 @@ class CreateDataset(data.Dataset):
 
     def __getitem__(self, index):
         # load image
-        index = self.epoch*len(self.img_size)+index
+        index = self.epoch*self.img_size+index
 
         img, img_path = self.load_img(index)
         # load mask

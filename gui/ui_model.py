@@ -176,8 +176,8 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
         item = random.randint(0, self.image_size-1)
         self.fname = self.image_paths[item]
         if self.firstly:
-            self.fname = './datasets/CUB_200_2011\\images/042.Vermilion_Flycatcher/Vermilion_Flycatcher_0045_42219.jpg'
-            # self.fname = './datasets/CUB_200_2011\\images/169.Magnolia_Warbler/Magnolia_Warbler_0063_166121.jpg'
+            # self.fname = './datasets/CUB_200_2011\\images/042.Vermilion_Flycatcher/Vermilion_Flycatcher_0045_42219.jpg'
+            self.fname = './datasets/CUB_200_2011\\images/169.Magnolia_Warbler/Magnolia_Warbler_0063_166121.jpg'
 
             self.firstly = False
         self.showImage(self.fname)
