@@ -28,7 +28,7 @@ if __name__ == '__main__':
         print('\n Training epoch: %d' % epoch)
 
         for i, data in enumerate(dataset):
-            # TODO: dataset.epoch = epoch - 1
+            dataset.epoch = epoch - 1
             iter_start_time = time.time()
             total_iteration += 1
             model.set_input(data)
