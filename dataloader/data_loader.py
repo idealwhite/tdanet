@@ -17,7 +17,12 @@ class CreateDataset(data.Dataset):
         self.img_paths, self.img_size = make_dataset(opt.img_file)
         # provides random file for training and testing
         if opt.mask_file != 'none':
-            self.mask_paths, self.mask_size = make_dataset(opt.mask_file)
+            if not opt.mask_file.endswith('.json'):
+                self.mask_paths, self.mask_size = make_dataset(opt.mask_file)
+            else:
+                with open(opt.mask_file, 'r') as f:
+                    self.image_bbox = json.load(f)
+
         self.transform = get_transform(opt)
 
         ## ========Abnout text stuff===============
@@ -46,7 +51,7 @@ class CreateDataset(data.Dataset):
 
         img, img_path = self.load_img(index)
         # load mask
-        mask = self.load_mask(img, index)
+        mask = self.load_mask(img, index, img_path)
 
         caption_idx, caption_len, caption, img_name= self._load_text_idx(index)
         return {'img': img, 'img_path': img_path, 'mask': mask, \
@@ -77,7 +82,7 @@ class CreateDataset(data.Dataset):
 
         return caption_idx, caption_len, caption, img_name
 
-    def load_mask(self, img, index):
+    def load_mask(self, img, index, img_path):
         """Load different mask types for training and testing"""
         mask_type_index = random.randint(0, len(self.opt.mask_type) - 1)
         mask_type = self.opt.mask_type[mask_type_index]
@@ -115,6 +120,21 @@ class CreateDataset(data.Dataset):
                                                      ])
             mask = (mask_transform(mask_pil) == 0).float()
             mask_pil.close()
+            return mask
+
+        if mask_type == 4:
+            #load masks; create mask according to image shape; return mask
+            if os.path.basename(img_path) not in self.image_bbox:
+                return task.random_regular_mask(img)
+
+            mask = torch.ones_like(img)
+            bboxes = self.image_bbox[os.path.basename(img_path)]
+
+            # randomly select 3 bbox if there are more than 3 bboxes
+            selected_bbox_ids = random.randrange(0, len(bboxes))[:min(3, len(bboxes))]
+            for idx in selected_bbox_ids:
+                x1,x2,y1,y2 = bboxes[idx]
+                mask[x1:x2, y1:y2] = 0
             return mask
 
 

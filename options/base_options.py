@@ -16,7 +16,8 @@ class BaseOptions():
         parser.add_argument('--model', type=str, default='hiddentextualpluralistic', help='name of the model type. [pluralistic]')
         parser.add_argument('--mask_type', type=int, default=[1, 2, 3], nargs='+',
                             help='mask type, 0: center mask, 1:random regular mask, '
-                            '2: random irregular mask. 3: external irregular mask. [0],[1,2],[1,2,3]')
+                            '2: random irregular mask. 3: external irregular mask. 4: external json bbox mask'
+                            ' [0],[1,2],[1,2,3]')
         parser.add_argument('--checkpoints_dir', type=str, default='./checkpoints', help='models are save here')
         parser.add_argument('--which_iter', type=str, default='latest', help='which iterations to load')
         parser.add_argument('--gpu_ids', type=str, default='-1', help='gpu ids: e.g. 0, 1, 2 use -1 for CPU')
