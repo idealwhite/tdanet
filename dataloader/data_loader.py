@@ -3,6 +3,8 @@ import random
 import json
 import pickle
 import os
+import numpy as np
+import imageio
 from PIL import Image, ImageFile
 import torchvision.transforms as transforms
 import torch.utils.data as data
@@ -127,14 +129,23 @@ class CreateDataset(data.Dataset):
             if os.path.basename(img_path) not in self.image_bbox:
                 return task.random_regular_mask(img)
 
-            mask = torch.ones_like(img)
+            img_original = imageio.imread(img_path)
+            # create a mask matrix same as img_original
+            mask = np.ones_like(img_original)
             bboxes = self.image_bbox[os.path.basename(img_path)]
 
-            # randomly select 3 bbox if there are more than 3 bboxes
+            # randomly select 3 bbox if there are more than 2 bboxes
             selected_bbox_ids = random.choices(range(len(bboxes)), k=min(2, len(bboxes)))
             for idx in selected_bbox_ids:
                 x1,x2,y1,y2 = bboxes[idx]
-                mask[:,x1:x2, y1:y2] = 0
+                mask[x1:x2, y1:y2] = 0
+
+            # apply same transform as img to the mask
+            mask_pil = Image.fromarray(mask)
+
+            mask = self.transform(mask_pil)
+            mask_pil.close()
+
             return mask
 
 
