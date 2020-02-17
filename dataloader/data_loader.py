@@ -130,14 +130,14 @@ class CreateDataset(data.Dataset):
             img_original = np.asarray(Image.open(img_path).convert('RGB'))
 
             # create a mask matrix same as img_original
-            mask = np.ones_like(img_original)
+            mask = np.zeros_like(img_original)
             bboxes = self.image_bbox[os.path.basename(img_path)]
 
             # randomly select 3 bbox if there are more than 2 bboxes
             selected_bbox_ids = random.choices(range(len(bboxes)), k=min(2, len(bboxes)))
             for idx in selected_bbox_ids:
                 x1,x2,y1,y2 = bboxes[idx]
-                mask[x1:x2, y1:y2] = 0
+                mask[x1:x2, y1:y2] = 1
 
             # apply same transform as img to the mask
             mask_pil = Image.fromarray(mask)
