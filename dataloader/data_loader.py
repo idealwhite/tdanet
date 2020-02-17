@@ -142,17 +142,15 @@ class CreateDataset(data.Dataset):
             # apply same transform as img to the mask
             mask_pil = Image.fromarray(mask)
 
-            size = mask_pil.size[0]
-            if size > mask_pil.size[1]:
-                size = mask_pil.size[1]
+            fsize = [self.opt.fineSize[0], self.opt.fineSize[1]]
             if self.opt.isTrain:
                 mask_transform = transforms.Compose([transforms.RandomHorizontalFlip(),
                                                  transforms.RandomRotation(10),
-                                                 transforms.Resize(self.opt.fineSize),
+                                                 transforms.Resize(fsize),
                                                  transforms.ToTensor()
                                                  ])
             else:
-                mask_transform = transforms.Compose([transforms.Resize(self.opt.fineSize),
+                mask_transform = transforms.Compose([transforms.Resize(fsize),
                                                      transforms.ToTensor()
                                                      ])
 
