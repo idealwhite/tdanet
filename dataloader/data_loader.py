@@ -131,7 +131,7 @@ class CreateDataset(data.Dataset):
             bboxes = self.image_bbox[os.path.basename(img_path)]
 
             # randomly select 3 bbox if there are more than 3 bboxes
-            selected_bbox_ids = random.choices(range(len(bboxes)), k=min(3, len(bboxes)))
+            selected_bbox_ids = random.choices(range(len(bboxes)), k=min(2, len(bboxes)))
             for idx in selected_bbox_ids:
                 x1,x2,y1,y2 = bboxes[idx]
                 mask[x1:x2, y1:y2] = 0
