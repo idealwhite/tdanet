@@ -129,11 +129,9 @@ class CreateDataset(data.Dataset):
             if os.path.basename(img_path) not in self.image_bbox:
                 return task.random_regular_mask(img)
 
-            img_original = imageio.imread(img_path)
-            if len(img_original) != 3:
-                img_original = np.stack([img_original]*3, axis=-1)
+            img_original = np.asarray(Image.open(img_path).convert('RGB'))
+
             # create a mask matrix same as img_original
-            assert img_original.shape[-1] == 3, (img_original.shape, img_path)
             mask = np.ones_like(img_original)
             bboxes = self.image_bbox[os.path.basename(img_path)]
 
@@ -141,12 +139,12 @@ class CreateDataset(data.Dataset):
             selected_bbox_ids = random.choices(range(len(bboxes)), k=min(2, len(bboxes)))
             for idx in selected_bbox_ids:
                 x1,x2,y1,y2 = bboxes[idx]
-                mask[x1:x2, y1:y2] = 0
+                mask[:, x1:x2, y1:y2] = 0
 
             # apply same transform as img to the mask
             mask_pil = Image.fromarray(mask)
 
-            mask = self.transform(mask_pil)
+            mask = (self.transform(mask_pil) == 0).float()
 
             mask_pil.close()
 
