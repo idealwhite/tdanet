@@ -134,7 +134,7 @@ class CreateDataset(data.Dataset):
             selected_bbox_ids = random.choices(range(len(bboxes)), k=min(2, len(bboxes)))
             for idx in selected_bbox_ids:
                 x1,x2,y1,y2 = bboxes[idx]
-                mask[x1:x2, y1:y2] = 0
+                mask[:,x1:x2, y1:y2] = 0
             return mask
 
 
