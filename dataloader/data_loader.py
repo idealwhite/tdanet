@@ -54,7 +54,7 @@ class CreateDataset(data.Dataset):
         img, img_path = self.load_img(index)
         # load mask
         mask = self.load_mask(img, index, img_path)
-
+        assert sum(img.shape) == sum(mask.shape), (img.shape, mask.shape)
         caption_idx, caption_len, caption, img_name= self._load_text_idx(index)
         return {'img': img, 'img_path': img_path, 'mask': mask, \
                 'caption_idx' : torch.Tensor(caption_idx).long(), 'caption_len':caption_len,\
@@ -130,7 +130,10 @@ class CreateDataset(data.Dataset):
                 return task.random_regular_mask(img)
 
             img_original = imageio.imread(img_path)
+            if len(img_original) != 3:
+                img_original = np.stack([img_original]*3, axis=-1)
             # create a mask matrix same as img_original
+            assert img_original.shape[-1] == 3, (img_original.shape, img_path)
             mask = np.ones_like(img_original)
             bboxes = self.image_bbox[os.path.basename(img_path)]
 
@@ -144,6 +147,7 @@ class CreateDataset(data.Dataset):
             mask_pil = Image.fromarray(mask)
 
             mask = self.transform(mask_pil)
+
             mask_pil.close()
 
             return mask
