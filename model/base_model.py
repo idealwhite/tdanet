@@ -97,7 +97,7 @@ class BaseModel():
                 if isinstance(text, list):
                     text_ret[name] = text[-1] + self.visual_names[-1]
                 else:
-                    text_ret[name] = text+ + self.visual_names
+                    text_ret[name] = text + self.visual_names
         return text_ret
 
     def get_current_dis(self):
