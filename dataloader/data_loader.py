@@ -111,13 +111,11 @@ class CreateDataset(data.Dataset):
             if self.opt.isTrain:
                 mask_transform = transforms.Compose([transforms.RandomHorizontalFlip(),
                                                  transforms.RandomRotation(10),
-                                                 transforms.CenterCrop([size, size]),
                                                  transforms.Resize(self.opt.fineSize),
                                                  transforms.ToTensor()
                                                  ])
             else:
-                mask_transform = transforms.Compose([transforms.CenterCrop([size, size]),
-                                                     transforms.Resize(self.opt.fineSize),
+                mask_transform = transforms.Compose([transforms.Resize(self.opt.fineSize),
                                                      transforms.ToTensor()
                                                      ])
             mask = (mask_transform(mask_pil) == 0).float()
@@ -150,13 +148,11 @@ class CreateDataset(data.Dataset):
             if self.opt.isTrain:
                 mask_transform = transforms.Compose([transforms.RandomHorizontalFlip(),
                                                  transforms.RandomRotation(10),
-                                                 transforms.CenterCrop([size, size]),
                                                  transforms.Resize(self.opt.fineSize),
                                                  transforms.ToTensor()
                                                  ])
             else:
-                mask_transform = transforms.Compose([transforms.CenterCrop([size, size]),
-                                                     transforms.Resize(self.opt.fineSize),
+                mask_transform = transforms.Compose([transforms.Resize(self.opt.fineSize),
                                                      transforms.ToTensor()
                                                      ])
 
