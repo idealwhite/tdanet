@@ -95,9 +95,9 @@ class BaseModel():
             if isinstance(name, str):
                 text = getattr(self, name)
                 if isinstance(text, list):
-                    text_ret[name] = text[-1] + self.image_paths[-1]
+                    text_ret[name] = text[-1] + self.image_paths[0]
                 else:
-                    text_ret[name] = text + self.image_paths[-1]
+                    text_ret[name] = text + self.image_paths[0]
         return text_ret
 
     def get_current_dis(self):
