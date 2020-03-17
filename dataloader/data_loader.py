@@ -105,19 +105,9 @@ class CreateDataset(data.Dataset):
         if mask_type == 3:
             mask_index = index
             mask_pil = Image.open(self.mask_paths[mask_index]).convert('RGB')
-            size = mask_pil.size[0]
-            if size > mask_pil.size[1]:
-                size = mask_pil.size[1]
-            if self.opt.isTrain:
-                mask_transform = transforms.Compose([transforms.RandomHorizontalFlip(),
-                                                 transforms.RandomRotation(10),
-                                                 transforms.Resize(self.opt.fineSize),
-                                                 transforms.ToTensor()
-                                                 ])
-            else:
-                mask_transform = transforms.Compose([transforms.Resize(self.opt.fineSize),
-                                                     transforms.ToTensor()
-                                                     ])
+
+            mask_transform = get_transform_mask(self.opt)
+
             mask = (mask_transform(mask_pil) == 0).float()
             mask_pil.close()
             return mask
@@ -142,17 +132,7 @@ class CreateDataset(data.Dataset):
             # apply same transform as img to the mask
             mask_pil = Image.fromarray(mask)
 
-            fsize = [self.opt.fineSize[0], self.opt.fineSize[1]]
-            if self.opt.isTrain:
-                mask_transform = transforms.Compose([transforms.RandomHorizontalFlip(),
-                                                 transforms.RandomRotation(10),
-                                                 transforms.Resize(fsize),
-                                                 transforms.ToTensor()
-                                                 ])
-            else:
-                mask_transform = transforms.Compose([transforms.Resize(fsize),
-                                                     transforms.ToTensor()
-                                                     ])
+            mask_transform = get_transform_mask(self.opt)
 
             mask = (mask_transform(mask_pil) == 0).float()
 
@@ -167,6 +147,27 @@ def dataloader(opt):
 
     return dataset
 
+def get_transform_mask(opt):
+    """Basic process to transform PIL image to torch tensor"""
+    transform_list = []
+    osize = [opt.loadSize[0], opt.loadSize[1]]
+    fsize = [opt.fineSize[0], opt.fineSize[1]]
+    if opt.isTrain:
+        if opt.resize_or_crop == 'resize_and_crop':
+            transform_list.append(transforms.Resize(osize))
+            transform_list.append(transforms.RandomCrop(fsize))
+        elif opt.resize_or_crop == 'crop':
+            transform_list.append(transforms.RandomCrop(fsize))
+        if not opt.no_flip:
+            transform_list.append(transforms.RandomHorizontalFlip())
+        if not opt.no_rotation:
+            transform_list.append(transforms.RandomRotation(3))
+    else:
+        transform_list.append(transforms.Resize(fsize))
+
+    transform_list += [transforms.ToTensor()]
+
+    return transforms.Compose(transform_list)
 
 def get_transform(opt):
     """Basic process to transform PIL image to torch tensor"""
