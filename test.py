@@ -1,3 +1,4 @@
+# python test.py --name wordattninpainting  --img_file datasets/CUB_200_2011/valid.flist --results_dir results/wordattninpainting  --how_many 200 --mask_file datasets/CUB_200_2011/test_mask.flist --mask_type 3 --no_shuffle --gpu_ids 0 --nsampling 1
 from options import test_options
 from dataloader import data_loader
 from model import create_model
