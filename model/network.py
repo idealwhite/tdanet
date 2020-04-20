@@ -480,8 +480,8 @@ class WordAttnEncoder(nn.Module):
             setattr(self, 'infer_prior' + str(i), block)
 
         # For textual, only change input and hidden dimension, z_nc is set when called.
-        self.posterior = ResBlock(ngf * mult + text_dim, z_nc, ngf * mult, norm_layer, nonlinearity, 'none', use_spect, use_coord)
-        self.prior =     ResBlock(ngf * mult + text_dim, z_nc, ngf * mult, norm_layer, nonlinearity, 'none', use_spect, use_coord)
+        self.posterior = ResBlock(ngf * mult + text_dim, 2*z_nc, ngf * mult, norm_layer, nonlinearity, 'none', use_spect, use_coord)
+        self.prior =     ResBlock(ngf * mult + text_dim, 2*z_nc, ngf * mult, norm_layer, nonlinearity, 'none', use_spect, use_coord)
 
     def forward(self, img_m, word_embeddings, text_mask, image_mask, img_c=None):
         """
@@ -534,8 +534,8 @@ class WordAttnEncoder(nn.Module):
             weighted_word_embedding = self.word_attention(
                 f_m, word_embeddings, mask=text_mask, image_mask=image_mask, inverse_attention=True)
 
-            distribution, f_m_text = self.one_path(out, weighted_word_embedding)
-            f_text = torch.cat([f_m_text, weighted_word_embedding], dim=1)
+            distribution = self.one_path(out, weighted_word_embedding)
+            f_text = weighted_word_embedding
             return distribution, feature, f_text
 
     def one_path(self, f_in, weighted_word_embedding):
@@ -571,11 +571,11 @@ class WordAttnEncoder(nn.Module):
         o = self.posterior(f_c_text)
         p_mu, p_std = torch.split(o, self.z_nc, dim=1)
 
-        distribution, f_m_sent = self.one_path(f_m, weighted_word_embedding_m)
+        distribution = self.one_path(f_m, weighted_word_embedding_m)
         distributions.append([p_mu, F.softplus(p_std), distribution[0][0], distribution[0][1]])
 
-        f_m_text = torch.cat([f_m_sent, weighted_word_embedding_m], dim=1)
-        f_c_text = torch.cat([f_m_sent, weighted_word_embedding_c], dim=1)
+        f_m_text = weighted_word_embedding_m
+        f_c_text = weighted_word_embedding_c
         return distributions, torch.cat([f_m_text, f_c_text], dim=0)
 
 
