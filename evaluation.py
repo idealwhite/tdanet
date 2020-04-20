@@ -1,3 +1,4 @@
+#  python evaluation.py --ground_truth_path eval_hidden_ad-l2-g_maxpool_reproduce.flist --save_path results/hidden_ad-l2-g_maxpool_reproduce_centermask/ --batch_test 30 
 import numpy as np
 import argparse
 from PIL import Image
