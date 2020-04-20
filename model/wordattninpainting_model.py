@@ -142,7 +142,7 @@ class WordAttnInpainting(BaseModel):
         # encoder process
         # TOTEST: adapt to word embedding, call AttTextualResEncoder
         distribution, f, f_text = self.net_E(
-            self.img_m, self.sentence_embedding, self.word_embeddings, self.text_mask, self.mask)
+            self.img_m, self.word_embeddings, self.text_mask, self.mask)
         variation_factor = 0. if self.opt.no_variance else 1.
         q_distribution = torch.distributions.Normal(distribution[-1][0], distribution[-1][1] * variation_factor)
         scale_mask = task.scale_img(self.mask, size=[f[2].size(2), f[2].size(3)])
@@ -199,7 +199,7 @@ class WordAttnInpainting(BaseModel):
         """Run forward processing to get the inputs"""
         # encoder process
         distribution_factors, f, f_text = self.net_E(
-            self.img_m, self.sentence_embedding, self.word_embeddings, self.text_mask, self.mask, self.img_c)
+            self.img_m, self.word_embeddings, self.text_mask, self.mask, self.img_c)
 
         p_distribution, q_distribution, self.kl_rec, self.kl_g = self.get_distribution(distribution_factors)
 

@@ -101,8 +101,8 @@ class CreateDataset(data.Dataset):
         if mask_type == 2:
             return task.random_irregular_mask(img)
 
-        # external mask from "Image Inpainting for Irregular Holes Using Partial Convolutions (ECCV18)"
         if mask_type == 3:
+            # file masks, e.g. CUB object mask
             mask_index = index
             mask_pil = Image.open(self.mask_paths[mask_index]).convert('RGB')
 
@@ -113,7 +113,7 @@ class CreateDataset(data.Dataset):
             return mask
 
         if mask_type == 4:
-            #load masks; create mask according to image shape; return mask
+            # coco json file object mask
             if os.path.basename(img_path) not in self.image_bbox:
                 return task.random_regular_mask(img)
 
