@@ -8,7 +8,9 @@ import os
 import glob
 import shutil
 from tqdm import tqdm
-from skimage.measure import compare_ssim as ssim
+from skimage.measure import compare_ssim
+from skimage.measure import compare_psnr
+from skimage.measure import compare_mse
 
 parser = argparse.ArgumentParser(description='Evaluation ont the dataset')
 parser.add_argument('--ground_truth_path', type = str, default='dataset/image_painting/imagenet_test.txt',
@@ -22,22 +24,17 @@ args = parser.parse_args()
 
 def compute_errors(ground_truth, pre):
 
-    # l1 loss
     l1 = np.mean(np.abs(ground_truth-pre))
-
-    # PSNR
-    mse = np.mean((ground_truth - pre) ** 2)
-    if mse == 0:
-        PSNR = 100
-    else:
-        PSNR = 20 * math.log10(255.0 / math.sqrt(mse))
+    mse = compare_mse(ground_truth, pre)
+    PSNR = compare_psnr(ground_truth, pre,  data_range=1)
+    SSIM = compare_ssim(ground_truth, pre, multichannel=True, data_range=pre.max()-pre.min(), sigma=1.5)
 
     # TV
+    pre = np.array(pre_image).astype(np.float32)
     gx = pre - np.roll(pre, -1, axis=1)
     gy = pre - np.roll(pre, -1, axis=0)
     grad_norm2 = gx ** 2 + gy ** 2
     TV = np.mean(np.sqrt(grad_norm2))
-    SSIM = ssim(ground_truth, pre, multichannel=True, data_range=pre.max()-pre.min(), sigma=1.5)
 
     return l1, PSNR, TV, SSIM, mse
 
@@ -68,7 +65,6 @@ if __name__ == "__main__":
             # calculate one data in a batch
             index = num+j
             ground_truth_image = Image.open(ground_truth_paths[index]).resize([256,256]).convert('RGB')
-            ground_truth_numpy = np.array(ground_truth_image).astype(np.float32)
             l1_sample = 1000
             mse_sample = 1000
             PSNR_sample = 0
@@ -83,8 +79,7 @@ if __name__ == "__main__":
                 index2 = k
 
                 pre_image = Image.open(pre_paths[index2]).resize([256,256]).convert('RGB')
-                pre_numpy = np.array(pre_image).astype(np.float32)
-                l1_temp, PSNR_temp, TV_temp, SSIM_temp, mse_temp = compute_errors(ground_truth_numpy, pre_numpy)
+                l1_temp, PSNR_temp, TV_temp, SSIM_temp, mse_temp = compute_errors(ground_truth_image, pre_image)
                 # select the best results for the errors estimation
                 if l1_temp - PSNR_temp + TV_temp - SSIM_temp + mse_temp < \
                           l1_sample - PSNR_sample + TV_sample - SSIM_temp + mse_temp:
