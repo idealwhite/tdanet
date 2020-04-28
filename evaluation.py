@@ -39,7 +39,7 @@ def compute_errors(ground_truth, pre):
     TV = np.mean(np.sqrt(grad_norm2))
     SSIM = ssim(ground_truth, pre, multichannel=True, data_range=pre.max()-pre.min(), sigma=1.5)
 
-    return l1, PSNR, TV, SSIM
+    return l1, PSNR, TV, SSIM, mse
 
 
 if __name__ == "__main__":
@@ -49,12 +49,15 @@ if __name__ == "__main__":
     iters = int(ground_truth_size/args.batch_test)
 
     l1_loss = np.zeros(iters, np.float32)
+    mse_loss = np.zeros(iters, np.float32)
     PSNR = np.zeros(iters, np.float32)
     TV = np.zeros(iters, np.float32)
     SSIM = np.zeros(iters, np.float32)
 
     for i in tqdm(range(0, iters)):
+        # calculate one batch of test data
         l1_batch = np.zeros(args.batch_test, np.float32)
+        mse_batch = np.zeros(args.batch_test, np.float32)
         PSNR_batch = np.zeros(args.batch_test, np.float32)
         TV_batch = np.zeros(args.batch_test, np.float32)
         SSIM_batch = np.zeros(args.batch_test, np.float32)
@@ -62,37 +65,45 @@ if __name__ == "__main__":
         num = i*args.batch_test
 
         for j in range(args.batch_test):
+            # calculate one data in a batch
             index = num+j
             ground_truth_image = Image.open(ground_truth_paths[index]).resize([256,256]).convert('RGB')
             ground_truth_numpy = np.array(ground_truth_image).astype(np.float32)
             l1_sample = 1000
+            mse_sample = 1000
             PSNR_sample = 0
+            SSIM_sample = 0
             TV_sample = 1000
             name = ground_truth_paths[index].split('/')[-1].split("truth")[0]+"*"
             pre_paths = sorted(glob.glob(os.path.join(args.save_path, name)))
             num_image_files = len(pre_paths)
 
             for k in range(num_image_files-1):
+                # calculate each image of random results
                 index2 = k
 
                 pre_image = Image.open(pre_paths[index2]).resize([256,256]).convert('RGB')
                 pre_numpy = np.array(pre_image).astype(np.float32)
-                l1_temp, PSNR_temp, TV_temp, SSIM_temp = compute_errors(ground_truth_numpy, pre_numpy)
+                l1_temp, PSNR_temp, TV_temp, SSIM_temp, mse_temp = compute_errors(ground_truth_numpy, pre_numpy)
                 # select the best results for the errors estimation
-                if l1_temp - PSNR_temp + TV_temp - SSIM_temp < l1_sample - PSNR_sample + TV_sample - SSIM_temp:
-                    l1_sample, PSNR_sample, TV_sample, SSIM_sample = l1_temp, PSNR_temp, TV_temp, SSIM_temp
+                if l1_temp - PSNR_temp + TV_temp - SSIM_temp + mse_temp < \
+                          l1_sample - PSNR_sample + TV_sample - SSIM_temp + mse_temp:
+                    l1_sample, PSNR_sample, TV_sample, SSIM_sample,mse_sample = \
+                        l1_temp, PSNR_temp, TV_temp, SSIM_temp,mse_temp
                     best_index = index2
 
             # shutil.copy(pre_paths[best_index], '/media/lyndon/c6f4bbbd-8d47-4dcb-b0db-d788fe2b2557/dataset/image_painting/results/ours/imagenet/center_copy/')
             # print(pre_paths[best_index])
             # print(l1_sample, PSNR_sample, TV_sample)
 
-            l1_batch[j], PSNR_batch[j], TV_batch[j], SSIM_batch[j] = l1_sample, PSNR_sample, TV_sample, SSIM_sample
+            l1_batch[j], PSNR_batch[j], TV_batch[j], SSIM_batch[j], mse_batch[j] = \
+                l1_sample, PSNR_sample, TV_sample, SSIM_sample, mse_sample
 
         l1_loss[i] = np.mean(l1_batch)
         PSNR[i] = np.mean(PSNR_batch)
         TV[i] = np.mean(TV_batch)
         SSIM[i] = np.mean(SSIM_batch)
+        mse_loss[i] = np.mean(mse_batch)
 
-    print('{:>10},{:>10},{:>10},{:>10}'.format('L1_LOSS', 'PSNR', 'TV','SSIM'))
-    print('{:10.4f},{:10.4f},{:10.4f},{:10.4f}'.format(l1_loss.mean(), PSNR.mean(), TV.mean(), SSIM.mean()))
+    print('{:>10},{:>10},{:>10},{:>10}'.format('L1_LOSS', 'PSNR', 'TV','SSIM', 'mse'))
+    print('{:10.4f},{:10.4f},{:10.4f},{:10.4f},{:10.4f}'.format(l1_loss.mean(), PSNR.mean(), TV.mean(), SSIM.mean(), mse_loss.mean()))
