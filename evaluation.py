@@ -11,6 +11,7 @@ from tqdm import tqdm
 from skimage.measure import compare_ssim
 from skimage.measure import compare_psnr
 from skimage.measure import compare_mse
+from skimage.color import rgb2gray
 
 parser = argparse.ArgumentParser(description='Evaluation ont the dataset')
 parser.add_argument('--ground_truth_path', type = str, default='dataset/image_painting/imagenet_test.txt',
@@ -27,6 +28,9 @@ def compare_mae(img_true, img_test):
 def compute_errors(ground_truth, pre):
     pre = np.array(pre).astype(np.float32)
     ground_truth = np.array(ground_truth).astype(np.float32)
+
+    pre = rgb2gray(pre)
+    ground_truth = rgb2gray(ground_truth)
 
     mse = compare_mse(ground_truth, pre)
     PSNR = compare_psnr(ground_truth, pre,  data_range=1)
