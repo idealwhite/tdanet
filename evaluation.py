@@ -21,6 +21,8 @@ parser.add_argument('--batch_test', type=int, default=32,
                     help='how many images to load for each test, just like batch')
 args = parser.parse_args()
 
+def compare_mae(img_true, img_test):
+    return np.sum(np.abs(img_true - img_test)) / np.sum(img_true + img_test)
 
 def compute_errors(ground_truth, pre):
     pre = np.array(pre).astype(np.float32)
@@ -29,14 +31,13 @@ def compute_errors(ground_truth, pre):
     mse = compare_mse(ground_truth, pre)
     PSNR = compare_psnr(ground_truth, pre,  data_range=1)
     SSIM = compare_ssim(ground_truth, pre, multichannel=True, data_range=pre.max()-pre.min(), sigma=1.5)
-
+    l1 = compare_mae(ground_truth, pre)
     # TV
     gx = pre - np.roll(pre, -1, axis=1)
     gy = pre - np.roll(pre, -1, axis=0)
     grad_norm2 = gx ** 2 + gy ** 2
     TV = np.mean(np.sqrt(grad_norm2))
 
-    l1 = np.mean(np.abs(ground_truth-pre))
     return l1, PSNR, TV, SSIM, mse
 
 
