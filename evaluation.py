@@ -24,18 +24,19 @@ args = parser.parse_args()
 
 def compute_errors(ground_truth, pre):
 
-    l1 = np.mean(np.abs(ground_truth-pre))
     mse = compare_mse(ground_truth, pre)
     PSNR = compare_psnr(ground_truth, pre,  data_range=1)
     SSIM = compare_ssim(ground_truth, pre, multichannel=True, data_range=pre.max()-pre.min(), sigma=1.5)
 
     # TV
     pre = np.array(pre_image).astype(np.float32)
+    ground_truth = np.array(ground_truth).astype(np.float32)
     gx = pre - np.roll(pre, -1, axis=1)
     gy = pre - np.roll(pre, -1, axis=0)
     grad_norm2 = gx ** 2 + gy ** 2
     TV = np.mean(np.sqrt(grad_norm2))
 
+    l1 = np.mean(np.abs(ground_truth-pre))
     return l1, PSNR, TV, SSIM, mse
 
 
