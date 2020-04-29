@@ -10,7 +10,6 @@ import shutil
 from tqdm import tqdm
 from skimage.measure import compare_ssim
 from skimage.measure import compare_psnr
-from skimage.measure import compare_mse
 from skimage.color import rgb2gray
 
 parser = argparse.ArgumentParser(description='Evaluation ont the dataset')
@@ -32,7 +31,6 @@ def compute_errors(ground_truth, pre):
     pre = rgb2gray(pre)
     ground_truth = rgb2gray(ground_truth)
 
-    mse = compare_mse(ground_truth, pre)
     PSNR = compare_psnr(ground_truth, pre,  data_range=1)
     SSIM = compare_ssim(ground_truth, pre, multichannel=True, data_range=pre.max()-pre.min(), sigma=1.5)
     l1 = compare_mae(ground_truth, pre)
@@ -42,7 +40,7 @@ def compute_errors(ground_truth, pre):
     grad_norm2 = gx ** 2 + gy ** 2
     TV = np.mean(np.sqrt(grad_norm2))
 
-    return l1, PSNR, TV, SSIM, mse
+    return l1, PSNR, TV, SSIM
 
 
 if __name__ == "__main__":
@@ -52,7 +50,6 @@ if __name__ == "__main__":
     iters = int(ground_truth_size/args.batch_test)
 
     l1_loss = np.zeros(iters, np.float32)
-    mse_loss = np.zeros(iters, np.float32)
     PSNR = np.zeros(iters, np.float32)
     TV = np.zeros(iters, np.float32)
     SSIM = np.zeros(iters, np.float32)
@@ -60,7 +57,6 @@ if __name__ == "__main__":
     for i in tqdm(range(0, iters)):
         # calculate one batch of test data
         l1_batch = np.zeros(args.batch_test, np.float32)
-        mse_batch = np.zeros(args.batch_test, np.float32)
         PSNR_batch = np.zeros(args.batch_test, np.float32)
         TV_batch = np.zeros(args.batch_test, np.float32)
         SSIM_batch = np.zeros(args.batch_test, np.float32)
@@ -72,7 +68,6 @@ if __name__ == "__main__":
             index = num+j
             ground_truth_image = Image.open(ground_truth_paths[index]).resize([256,256]).convert('RGB')
             l1_sample = 1000
-            mse_sample = 1000
             PSNR_sample = 0
             SSIM_sample = 0
             TV_sample = 1000
@@ -85,26 +80,25 @@ if __name__ == "__main__":
                 index2 = k
 
                 pre_image = Image.open(pre_paths[index2]).resize([256,256]).convert('RGB')
-                l1_temp, PSNR_temp, TV_temp, SSIM_temp, mse_temp = compute_errors(ground_truth_image, pre_image)
+                l1_temp, PSNR_temp, TV_temp, SSIM_temp = compute_errors(ground_truth_image, pre_image)
                 # select the best results for the errors estimation
-                if l1_temp - PSNR_temp + TV_temp - SSIM_temp + mse_temp < \
-                          l1_sample - PSNR_sample + TV_sample - SSIM_temp + mse_temp:
-                    l1_sample, PSNR_sample, TV_sample, SSIM_sample,mse_sample = \
-                        l1_temp, PSNR_temp, TV_temp, SSIM_temp,mse_temp
+                if l1_temp - PSNR_temp + TV_temp - SSIM_temp < \
+                          l1_sample - PSNR_sample + TV_sample - SSIM_temp:
+                    l1_sample, PSNR_sample, TV_sample, SSIM_sample = \
+                        l1_temp, PSNR_temp, TV_temp, SSIM_temp
                     best_index = index2
 
             # shutil.copy(pre_paths[best_index], '/media/lyndon/c6f4bbbd-8d47-4dcb-b0db-d788fe2b2557/dataset/image_painting/results/ours/imagenet/center_copy/')
             # print(pre_paths[best_index])
             # print(l1_sample, PSNR_sample, TV_sample)
 
-            l1_batch[j], PSNR_batch[j], TV_batch[j], SSIM_batch[j], mse_batch[j] = \
-                l1_sample, PSNR_sample, TV_sample, SSIM_sample, mse_sample
+            l1_batch[j], PSNR_batch[j], TV_batch[j], SSIM_batch[j] = \
+                l1_sample, PSNR_sample, TV_sample, SSIM_sample
 
         l1_loss[i] = np.mean(l1_batch)
         PSNR[i] = np.mean(PSNR_batch)
         TV[i] = np.mean(TV_batch)
         SSIM[i] = np.mean(SSIM_batch)
-        mse_loss[i] = np.mean(mse_batch)
 
-    print('{:>10},{:>10},{:>10},{:>10}'.format('L1_LOSS', 'PSNR', 'TV','SSIM', 'mse'))
-    print('{:10.4f},{:10.4f},{:10.4f},{:10.4f},{:10.4f}'.format(l1_loss.mean(), PSNR.mean(), TV.mean(), SSIM.mean(), mse_loss.mean()))
+    print('{:>10},{:>10},{:>10},{:>10}'.format('L1_LOSS', 'PSNR', 'TV','SSIM'))
+    print('{:10.4f},{:10.4f},{:10.4f},{:10.4f}'.format(l1_loss.mean(), PSNR.mean(), TV.mean(), SSIM.mean()))
