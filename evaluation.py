@@ -25,8 +25,8 @@ def compare_mae(img_true, img_test):
     return np.sum(np.abs(img_true - img_test)) / np.sum(img_true + img_test)
 
 def compute_errors(ground_truth, pre):
-    pre = np.array(pre).astype(np.float32)
-    ground_truth = np.array(ground_truth).astype(np.float32)
+    pre = np.array(pre).astype(np.float32) /255.
+    ground_truth = np.array(ground_truth).astype(np.float32)/255.
 
     pre = rgb2gray(pre)
     ground_truth = rgb2gray(ground_truth)
