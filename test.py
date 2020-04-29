@@ -25,4 +25,4 @@ if __name__=='__main__':
         with torch.no_grad():
             model.set_input(data)
             model.test()
-    os.system('ls '+opt.results_dir+'/*_truth.png > eval_'+opt.name+'.flist')
+    os.system('ls '+opt.results_dir+'/*_truth.png > eval_'+opt.results_dir.split('/')[-1]+'.flist')
