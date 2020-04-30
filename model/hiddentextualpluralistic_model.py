@@ -18,7 +18,7 @@ class HiddenTextualPluralistic(BaseModel):
                             help='factor to contorl prior variation: 1/(1+e^((x-0.8)*8))')
         parser.add_argument('--prior_beta', type=float, default=8,
                             help='factor to contorl prior variation: 1/(1+e^((x-0.8)*8))')
-
+        parser.add_argument('--no_maxpooling', action='store_true', help='rm maxpooling in DMA for ablation')
         if is_train:
             parser.add_argument('--train_paths', type=str, default='two', help='training strategies with one path or two paths')
             parser.add_argument('--dynamic_sigma', action='store_true', help='change sigma base on mask area')
@@ -44,6 +44,7 @@ class HiddenTextualPluralistic(BaseModel):
         self.distribution = []
         self.prior_alpha = opt.prior_alpha
         self.prior_beta = opt.prior_beta
+        self.max_pool = None if opt.no_maxpooling else 'max'
 
         # define the inpainting model
         self.net_E = network.define_att_textual_e(ngf=32, z_nc=256, img_f=256, layers=5, norm='none', activation='LeakyReLU',
