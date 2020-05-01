@@ -123,11 +123,16 @@ class CreateDataset(data.Dataset):
             mask = np.zeros_like(img_original)
             bboxes = self.image_bbox[os.path.basename(img_path)]
 
-            # randomly select 3 bbox if there are more than 2 bboxes
-            selected_bbox_ids = random.choices(range(len(bboxes)), k=min(2, len(bboxes)))
-            for idx in selected_bbox_ids:
-                x1,x2,y1,y2 = bboxes[idx]
-                mask[x1:x2, y1:y2] = 1
+            # choose max area box
+            choosen_box = 0,0,0,0
+            max_area = 0
+            for x1,x2,y1,y2 in bboxes:
+                area = (x2-x1) * (y2-y1)
+                if area > max_area:
+                    max_area = area
+                    choosen_box = x1,x2,y1,y2
+            x1, x2, y1, y2 = choosen_box
+            mask[x1:x2, y1:y2] = 1
 
             # apply same transform as img to the mask
             mask_pil = Image.fromarray(mask)
