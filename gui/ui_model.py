@@ -161,6 +161,7 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
         """Load the image"""
         self.fname, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'select the image', self.opt.img_file, 'Image files(*.jpg *.png)')
         self.showImage(self.fname)
+        self.random_caption()
 
     def random_image(self):
         """Random load the test image"""
@@ -176,7 +177,7 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
         item = random.randint(0, self.image_size-1)
         self.fname = self.image_paths[item]
         if self.firstly:
-            # self.fname = './datasets/CUB_200_2011\\images/042.Vermilion_Flycatcher/Vermilion_Flycatcher_0045_42219.jpg'
+            #self.fname = './datasets/CUB_200_2011\\images/042.Vermilion_Flycatcher/Vermilion_Flycatcher_0045_42219.jpg'
             self.fname = './datasets/CUB_200_2011\\images/169.Magnolia_Warbler/Magnolia_Warbler_0063_166121.jpg'
 
             self.firstly = False
@@ -184,13 +185,13 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
         print(self.fname)
 
         img_name = os.path.basename(self.fname)
-        caption = sorted(self.captions[img_name], key=lambda x:len(x))[0]
+        caption = sorted(self.captions[img_name], key=lambda x:len(x))[-1]
         self.textEdit.setText(caption)
 
     def random_caption(self):
         img_name = os.path.basename(self.fname)
-        captions = self.captions[img_name]
-        random.randint(0, len(captions))
+        caption = sorted(self.captions[img_name], key=lambda x:len(x))[0]
+        self.textEdit.setText(caption)
 
     def save_result(self):
         """Save the results to the disk"""
