@@ -209,11 +209,16 @@ class Contrast(BaseModel):
         # Compute contract loss between (h_word,h'_word)~(v_h,v'_h)
         v_h_g, v_h_rec = v[-1].chunk(2)
         h_word_g, h_word_rec = h_text.chunk(2)
-        # TODO: add contract loss stuff, check if the dimension of text and image are same.
-        self.f_vhg = self.feature_pooling(v_h_g)
-        self.f_vhc = self.feature_pooling(v_h_rec)
+
+        # anchor
         self.f_hwg = self.feature_pooling(h_word_g)
         self.f_hwc = self.feature_pooling(h_word_rec)
+
+        # pos/neg samples
+        self.f_vhc = self.feature_pooling(v_h_rec)
+        self.f_vhg = self.feature_pooling(v_h_g)
+        self.f_vhc.requires_grad = False
+        self.f_vhg.requires_grad = False
 
         # decoder process
         z, h, v_l, mask = self.get_G_inputs(p_distribution, q_distribution, v, h_text) # prepare inputs: img, mask, distribute
@@ -246,7 +251,7 @@ class Contrast(BaseModel):
         # gradient penalty for wgan-gp
         if self.opt.gan_mode == 'wgangp':
             gradient_penalty, gradients = external_function.cal_gradient_penalty(netD, real, fake.detach())
-            D_loss +=gradient_penalty
+            D_loss += gradient_penalty
 
         D_loss.backward()
 
