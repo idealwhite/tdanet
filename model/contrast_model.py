@@ -217,8 +217,8 @@ class Contrast(BaseModel):
         # pos/neg samples
         self.f_vhc = self.feature_pooling(v_h_rec)
         self.f_vhg = self.feature_pooling(v_h_g)
-        self.f_vhc.requires_grad = False
-        self.f_vhg.requires_grad = False
+        self.f_vhc.detach()
+        self.f_vhg.detach()
 
         # decoder process
         z, h, v_l, mask = self.get_G_inputs(p_distribution, q_distribution, v, h_text) # prepare inputs: img, mask, distribute
