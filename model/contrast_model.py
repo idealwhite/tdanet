@@ -27,6 +27,7 @@ class Contrast(BaseModel):
             parser.add_argument('--lambda_kl', type=float, default=20.0, help='weight for kl divergence loss')
             parser.add_argument('--lambda_gan', type=float, default=1.0, help='weight for generation loss')
             parser.add_argument('--lambda_match', type=float, default=0.1, help='weight for image-text match loss')
+            parser.add_argument('--contrast_pool', action='store_true', help='apply pooling to contrast features')
 
         return parser
 
@@ -60,7 +61,7 @@ class Contrast(BaseModel):
 
         if self.isTrain:
             # define the loss functions
-            self.feature_pooling = torch.nn.AdaptiveMaxPool2d(1)
+            self.feature_pooling = torch.nn.AdaptiveMaxPool2d(1) if opt.contrast_pool else lambda x:x
             # TODO: adjust the loss margin
             self.Contrastloss = torch.nn.TripletMarginLoss()
             self.GANloss = external_function.GANLoss(opt.gan_mode)
@@ -221,9 +222,7 @@ class Contrast(BaseModel):
         self.f_vhg.detach()
 
         # decoder process
-        z, h, v_l, mask = self.get_G_inputs(p_distribution, q_distribution, v, h_text) # prepare inputs: img, mask, distribute
-
-        z
+        z, h, v_l, mask = self.get_G_inputs(p_distribution, q_distribution, v, h_text)
 
         results, attn = self.net_G(z, h, v_l, mask)
         self.img_rec = []
