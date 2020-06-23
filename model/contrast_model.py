@@ -64,7 +64,7 @@ class Contrast(BaseModel):
             # define the loss functions
             self.feature_pooling = torch.nn.AdaptiveMaxPool2d(1) if opt.contrast_pool else lambda x:x
             # TODO: adjust the loss margin
-            self.Contrastloss = torch.nn.TripletMarginLoss() if opt.contrast_type else torch.nn.L1Loss()
+            self.Contrastloss = torch.nn.TripletMarginLoss() if opt.triplet else torch.nn.L1Loss()
             self.GANloss = external_function.GANLoss(opt.gan_mode)
             self.L1loss = torch.nn.L1Loss()
             self.L2loss = torch.nn.MSELoss()
