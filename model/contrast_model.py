@@ -28,6 +28,7 @@ class Contrast(BaseModel):
             parser.add_argument('--lambda_gan', type=float, default=1.0, help='weight for generation loss')
             parser.add_argument('--lambda_match', type=float, default=0.1, help='weight for image-text match loss')
             parser.add_argument('--contrast_pool', action='store_true', help='apply pooling to contrast features')
+            parser.add_argument('--triplet', action='store_true', help='contrast loss type, true for triplet')
 
         return parser
 
@@ -63,7 +64,7 @@ class Contrast(BaseModel):
             # define the loss functions
             self.feature_pooling = torch.nn.AdaptiveMaxPool2d(1) if opt.contrast_pool else lambda x:x
             # TODO: adjust the loss margin
-            self.Contrastloss = torch.nn.TripletMarginLoss()
+            self.Contrastloss = torch.nn.TripletMarginLoss() if opt.contrast_type else torch.nn.L1Loss()
             self.GANloss = external_function.GANLoss(opt.gan_mode)
             self.L1loss = torch.nn.L1Loss()
             self.L2loss = torch.nn.MSELoss()
@@ -271,8 +272,12 @@ class Contrast(BaseModel):
         self.loss_kl_rec = self.kl_rec.mean() * self.opt.lambda_kl * self.opt.output_scale
         self.loss_kl_g = self.kl_g.mean() * self.opt.lambda_kl * self.opt.output_scale
 
-        self.loss_contrast_rec = self.Contrastloss.forward(self.f_hwc, self.f_vhc, self.f_vhg)
-        self.loss_contrast_g = self.Contrastloss.forward(self.f_hwg, self.f_vhc, self.f_vhg)
+        if self.opt.triplet:
+            self.loss_contrast_rec = self.Contrastloss.forward(self.f_hwc, self.f_vhc, self.f_vhg)
+            self.loss_contrast_g = self.Contrastloss.forward(self.f_hwg, self.f_vhc, self.f_vhg)
+        else:
+            self.loss_contrast_rec = self.Contrastloss.forward(self.f_hwc, self.f_vhc)
+            self.loss_contrast_g = self.Contrastloss.forward(self.f_hwg, self.f_vhc)
 
         # generator adversarial loss
         base_function._freeze(self.net_D, self.net_D_rec)
