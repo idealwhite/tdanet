@@ -498,7 +498,7 @@ class ContrastResEncoder(nn.Module):
 
         # For textual, only change input and hidden dimension, z_nc is set when called.
         self.posterior = ResBlock(ngf * mult, 2*z_nc, ngf * mult, norm_layer, nonlinearity, 'none', use_spect, use_coord)
-        self.prior =     ResBlock(text_dim, 2*z_nc, ngf * mult, norm_layer, nonlinearity, 'none', use_spect, use_coord)
+        self.prior     = ResBlock(text_dim + ngf * mult, 2*z_nc, 2*ngf * mult, norm_layer, nonlinearity, 'none', use_spect, use_coord)
 
     def forward(self, img_m, sentence_embedding, word_embeddings, text_mask, image_mask, img_c=None):
         """
@@ -552,10 +552,10 @@ class ContrastResEncoder(nn.Module):
             weighted_word_embedding = self.word_attention(
                 f_m, word_embeddings, mask=text_mask, image_mask=image_mask, inverse_attention=True)
 
-            distribution, h_word = self.one_path(weighted_word_embedding)
+            distribution, h_word = self.one_path(weighted_word_embedding, f_m)
             return distribution, feature, h_word
 
-    def one_path(self, weighted_word_embedding):
+    def one_path(self, weighted_word_embedding, v_h):
         """one path for baseline training or testing"""
         h_word = weighted_word_embedding
         distribution = []
@@ -566,7 +566,7 @@ class ContrastResEncoder(nn.Module):
             h_word = infer_prior(h_word)
 
         # get distribution
-        o = self.prior(h_word)
+        o = self.prior(torch.cat([h_word,v_h], dim=1))
         q_mu, q_std = torch.split(o, self.z_nc, dim=1)
         distribution.append([q_mu, F.softplus(q_std)])
 
@@ -588,7 +588,7 @@ class ContrastResEncoder(nn.Module):
         distributions = []
         o = self.posterior(f_c)
         p_mu, p_std = torch.split(o, self.z_nc, dim=1)
-        distribution, h_word = self.one_path(weighted_word_embedding_m)
+        distribution, h_word = self.one_path(weighted_word_embedding_m, f_m)
         distributions.append([p_mu, F.softplus(p_std), distribution[0][0], distribution[0][1]])
 
         return distributions, torch.cat([h_word, h_word_c], dim=0)
