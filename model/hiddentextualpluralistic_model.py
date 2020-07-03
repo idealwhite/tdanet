@@ -60,7 +60,7 @@ class HiddenTextualPluralistic(BaseModel):
 
         if self.isTrain:
             # define the loss functions
-            self.GANloss = external_function.GNLoss(opt.gan_mode)
+            self.GANloss = external_function.GANLoss(opt.gan_mode)
             self.L1loss = torch.nn.L1Loss()
             self.L2loss = torch.nn.MSELoss()
 
