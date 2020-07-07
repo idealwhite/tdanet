@@ -108,7 +108,7 @@ class GANLoss(nn.Module):
             raise NotImplementedError('gan mode %s not implemented' % gan_mode)
 
     def __call__(self, prediction, target_is_real, is_disc=False):
-        """Calculate loss given Discriminator's output and grount truth labels.
+        """ Calculate loss given Discriminator's output and grount truth labels.
         Parameters:
             prediction (tensor) - - tpyically the prediction output from a discriminator
             target_is_real (bool) - - if the ground truth label is for real images or fake images

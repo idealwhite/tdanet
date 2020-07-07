@@ -27,6 +27,7 @@ class HiddenTextualPluralistic(BaseModel):
             parser.add_argument('--lambda_kl', type=float, default=20.0, help='weight for kl divergence loss')
             parser.add_argument('--lambda_gan', type=float, default=1.0, help='weight for generation loss')
             parser.add_argument('--lambda_match', type=float, default=0.1, help='weight for image-text match loss')
+            parser.add_argument('--update_language', action='store_true', help='update language encoder while training')
 
         return parser
 
@@ -95,7 +96,8 @@ class HiddenTextualPluralistic(BaseModel):
         state_dict = torch.load(text_config.LANGUAGE_ENCODER, map_location=lambda storage, loc: storage)
         self.text_encoder.load_state_dict(state_dict)
         self.text_encoder.eval()
-        self.text_encoder.requires_grad_(False)
+        if not self.opt.update_language:
+            self.text_encoder.requires_grad_(False)
         if len(self.gpu_ids) > 0 and torch.cuda.is_available():
             self.text_encoder.cuda()
 
@@ -269,7 +271,6 @@ class HiddenTextualPluralistic(BaseModel):
         D_real = self.net_D_rec(self.img_truth)
         self.loss_ad_l2_rec = self.L2loss(D_fake, D_real) * self.opt.lambda_gan
 
-        # TODO: change this part if SN-PatchGAN loss is finished.
         D_fake_g = self.net_D_rec(self.img_g[-1])
         self.loss_ad_l2_g = self.L2loss(D_fake_g, D_real) * self.opt.lambda_gan
 
