@@ -28,6 +28,7 @@ class HiddenTextualPluralistic(BaseModel):
             parser.add_argument('--lambda_gan', type=float, default=1.0, help='weight for generation loss')
             parser.add_argument('--lambda_match', type=float, default=0.1, help='weight for image-text match loss')
             parser.add_argument('--update_language', action='store_true', help='update language encoder while training')
+            parser.add_argument('--detach_embedding', action='store_true', help='do not pass grad to embedding in DAMSM-text end')
 
         return parser
 
@@ -255,35 +256,41 @@ class HiddenTextualPluralistic(BaseModel):
         # encoder kl loss
         self.loss_kl_rec = self.kl_rec.mean() * self.opt.lambda_kl * self.opt.output_scale
         self.loss_kl_g = self.kl_g.mean() * self.opt.lambda_kl * self.opt.output_scale
-        # TODO: add feature distance of rec and g weighted word embedding
 
-        # generator adversarial loss
+        # Adversarial loss
         base_function._freeze(self.net_D, self.net_D_rec)
-        # g loss fake
-        # Note: changed gen path gan loss to rec path
-        D_fake = self.net_D(self.img_g[-1])
-        self.loss_gan_g = self.GANloss(D_fake, True, False) * self.opt.lambda_gan
-        D_fake = self.net_D(self.img_rec[-1])
-        self.loss_gan_rec = self.GANloss(D_fake, True, False) * self.opt.lambda_gan
 
-        # rec loss fake
+        # D loss fake
+        D_fake_g = self.net_D(self.img_g[-1])
+        self.loss_gan_g = self.GANloss(D_fake_g, True, False) * self.opt.lambda_gan
+        D_fake_rec = self.net_D(self.img_rec[-1])
+        self.loss_gan_rec = self.GANloss(D_fake_rec, True, False) * self.opt.lambda_gan
+
+        # LSGAN loss
         D_fake = self.net_D_rec(self.img_rec[-1])
         D_real = self.net_D_rec(self.img_truth)
-        self.loss_ad_l2_rec = self.L2loss(D_fake, D_real) * self.opt.lambda_gan
-
         D_fake_g = self.net_D_rec(self.img_g[-1])
+        self.loss_ad_l2_rec = self.L2loss(D_fake, D_real) * self.opt.lambda_gan
         self.loss_ad_l2_g = self.L2loss(D_fake_g, D_real) * self.opt.lambda_gan
 
         # Text-image consistent loss
-        loss_sentence = base_function.sent_loss(self.cnn_code_rec, self.sentence_embedding, self.match_labels)
-        loss_word, _ = base_function.words_loss(self.region_features_rec, self.word_embeddings, self.match_labels, \
-                                 self.caption_length, len(self.word_embeddings))
+        if not self.opt.detach_embedding:
+            sentence_embedding = self.sentence_embedding
+            word_embeddings = self.word_embeddings
+        else:
+            sentence_embedding = self.sentence_embedding.detach()
+            word_embeddings = self.word_embeddings.detach()
+
+
+        loss_sentence = base_function.sent_loss(self.cnn_code_rec, sentence_embedding, self.match_labels)
+        loss_word, _ = base_function.words_loss(self.region_features_rec, word_embeddings, self.match_labels, \
+                                 self.caption_length, len(word_embeddings))
         self.loss_word_rec = loss_word * self.opt.lambda_match
         self.loss_sentence_rec = loss_sentence * self.opt.lambda_match
 
-        loss_sentence = base_function.sent_loss(self.cnn_code_g, self.sentence_embedding, self.match_labels)
-        loss_word, _ = base_function.words_loss(self.region_features_g, self.word_embeddings, self.match_labels, \
-                                 self.caption_length, len(self.word_embeddings))
+        loss_sentence = base_function.sent_loss(self.cnn_code_g, sentence_embedding, self.match_labels)
+        loss_word, _ = base_function.words_loss(self.region_features_g, word_embeddings, self.match_labels, \
+                                 self.caption_length, len(word_embeddings))
         self.loss_word_g = loss_word * self.opt.lambda_match
         self.loss_sentence_g = loss_sentence * self.opt.lambda_match
 
@@ -295,7 +302,6 @@ class HiddenTextualPluralistic(BaseModel):
             if self.opt.train_paths == "one":
                 loss_l1_g += self.L1loss(img_fake_i, img_real_i)
             elif self.opt.train_paths == "two":
-                # TODO: remove the mask if g are different to rec or masked area of g is terrible
                 loss_l1_g += self.L1loss(img_fake_i, img_real_i)
 
         self.loss_l1_rec = loss_l1_rec * self.opt.lambda_rec_l1
