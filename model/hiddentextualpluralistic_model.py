@@ -19,6 +19,10 @@ class HiddenTextualPluralistic(BaseModel):
         parser.add_argument('--prior_beta', type=float, default=8,
                             help='factor to contorl prior variation: 1/(1+e^((x-0.8)*8))')
         parser.add_argument('--no_maxpooling', action='store_true', help='rm maxpooling in DMA for ablation')
+        parser.add_argument('--update_language', action='store_true', help='update language encoder while training')
+        parser.add_argument('--detach_embedding', action='store_true',
+                            help='do not pass grad to embedding in DAMSM-text end')
+
         if is_train:
             parser.add_argument('--train_paths', type=str, default='two', help='training strategies with one path or two paths')
             parser.add_argument('--dynamic_sigma', action='store_true', help='change sigma base on mask area')
@@ -27,8 +31,6 @@ class HiddenTextualPluralistic(BaseModel):
             parser.add_argument('--lambda_kl', type=float, default=20.0, help='weight for kl divergence loss')
             parser.add_argument('--lambda_gan', type=float, default=1.0, help='weight for generation loss')
             parser.add_argument('--lambda_match', type=float, default=0.1, help='weight for image-text match loss')
-            parser.add_argument('--update_language', action='store_true', help='update language encoder while training')
-            parser.add_argument('--detach_embedding', action='store_true', help='do not pass grad to embedding in DAMSM-text end')
 
         return parser
 
