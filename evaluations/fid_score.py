@@ -114,7 +114,7 @@ def get_activations(files, model, batch_size=50, dims=2048,
 
         images = []
         for f in files[start:end]:
-            img_pil = Image.fromarray(imread(str(f)).astype(np.float32))
+            img_pil = Image.open(str(f)).convert('RGB')
             img = transform(img_pil)
             img_pil.close()
 
