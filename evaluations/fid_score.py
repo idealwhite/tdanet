@@ -121,9 +121,7 @@ def get_activations(files, model, batch_size=50, dims=2048,
             images.append(img.numpy())
         images = np.array(images)
 
-        # Reshape to (n_images, 3, height, width)
-        images = images.transpose((0, 3, 1, 2))
-        images /= 255
+        # keep (n_images, 3, height, width)
 
         batch = torch.from_numpy(images).type(torch.FloatTensor)
         if cuda:
