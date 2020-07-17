@@ -38,6 +38,7 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 import numpy as np
 import torch
+import torchvision.transforms as transforms
 from scipy import linalg
 from torch.nn.functional import adaptive_avg_pool2d
 
@@ -102,6 +103,8 @@ def get_activations(files, model, batch_size=50, dims=2048,
 
     pred_arr = np.empty((len(files), dims))
 
+    transform = transforms.Compose([transforms.Resize([256,256]), transforms.ToTensor()])
+
     for i in tqdm(range(0, len(files), batch_size)):
         if verbose:
             print('\rPropagating batch %d/%d' % (i + 1, n_batches),
@@ -109,8 +112,14 @@ def get_activations(files, model, batch_size=50, dims=2048,
         start = i
         end = i + batch_size
 
-        images = np.array([imread(str(f)).astype(np.float32)
-                           for f in files[start:end]])
+        images = []
+        for f in files[start:end]:
+            img_pil = Image.fromarray(imread(str(f)).astype(np.float32))
+            img = transform(img_pil)
+            img_pil.close()
+
+            images.append(img)
+        images = np.array(images)
 
         # Reshape to (n_images, 3, height, width)
         images = images.transpose((0, 3, 1, 2))
