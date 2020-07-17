@@ -118,7 +118,7 @@ def get_activations(files, model, batch_size=50, dims=2048,
             img = transform(img_pil)
             img_pil.close()
 
-            images.append(img)
+            images.append(img.numpy())
         images = np.array(images)
 
         # Reshape to (n_images, 3, height, width)
