@@ -15,10 +15,8 @@ def define_e(input_nc=3, ngf=64, z_nc=512, img_f=512, L=6, layers=5, norm='none'
     return init_net(net, init_type, activation, gpu_ids)
 
 def define_textual_e(input_nc=3, ngf=64, z_nc=512, img_f=512, L=6, layers=5, norm='none', activation='ReLU', use_spect=True,
-             use_coord=False, init_type='orthogonal', gpu_ids=[], text_dim=256):
-
-    net = TextualResEncoder(input_nc, ngf, z_nc, img_f, L, layers, norm, activation, use_spect, use_coord, text_dim)
-
+             use_coord=False, init_type='orthogonal', gpu_ids=[], image_dim=256, text_dim=256, multi_peak=True, pool_attention='max'):
+    net = TextualResEncoder(input_nc, ngf, z_nc, img_f, L, layers, norm, activation, use_spect, use_coord, image_dim, text_dim, multi_peak, pool_attention)
     return init_net(net, init_type, activation, gpu_ids)
 
 def define_att_textual_e(input_nc=3, ngf=64, z_nc=512, img_f=512, L=6, layers=5, norm='none', activation='ReLU', use_spect=True,
@@ -60,10 +58,11 @@ def define_constrast_g(output_nc=3, ngf=64, z_nc=512, img_f=512, L=1, layers=5, 
 
     return init_net(net, init_type, activation, gpu_ids)
 
-def define_textual_g(output_nc=3, ngf=64, z_nc=512, img_f=512, L=1, layers=5, norm='instance', activation='ReLU', output_scale=1,
-             use_spect=True, use_coord=False, use_attn=True, init_type='orthogonal', gpu_ids=[], text_dim=256):
 
-    net = TextualResGenerator(output_nc, ngf, z_nc, img_f, L, layers, norm, activation, output_scale, use_spect, use_coord, use_attn, text_dim)
+def define_textual_g(output_nc=3, f_text_dim=384, ngf=64, z_nc=512, img_f=512, L=1, layers=5, norm='instance', activation='ReLU', output_scale=1,
+             use_spect=True, use_coord=False, use_attn=True, init_type='orthogonal', gpu_ids=[]):
+
+    net = TextualResGenerator(output_nc, f_text_dim, ngf, z_nc, img_f, L, layers, norm, activation, output_scale, use_spect, use_coord, use_attn)
 
     return init_net(net, init_type, activation, gpu_ids)
 
@@ -204,8 +203,8 @@ class TextualResEncoder(nn.Module):
     :param norm: normalization function 'instance, batch, group'
     :param activation: activation function 'ReLU, SELU, LeakyReLU, PReLU'
     """
-    def __init__(self, input_nc=3, ngf=32, z_nc=256, img_f=128, L=6, layers=5, norm='none', activation='ReLU',
-                 use_spect=True, use_coord=False, text_dim=256):
+    def __init__(self, input_nc=3, ngf=32, z_nc=256, img_f=256, L=6, layers=5, norm='none', activation='ReLU',
+                 use_spect=True, use_coord=False, image_dim=256, text_dim=256, multi_peak=True, pool_attention='max'):
         super(TextualResEncoder, self).__init__()
 
         self.layers = layers
@@ -216,6 +215,7 @@ class TextualResEncoder(nn.Module):
         nonlinearity = get_nonlinearity_layer(activation_type=activation)
         # encoder part
         self.block0 = ResBlockEncoderOptimized(input_nc, ngf, norm_layer, nonlinearity, use_spect, use_coord)
+        self.word_attention = ImageTextAttention(idf=image_dim, cdf=text_dim, multi_peak=multi_peak, pooling=pool_attention)
 
         mult = 1
         for i in range(layers-1):
@@ -230,16 +230,20 @@ class TextualResEncoder(nn.Module):
             setattr(self, 'infer_prior' + str(i), block)
 
         # For textual, only change input and hidden dimension, z_nc is set when called.
-        self.posterior = ResBlock(ngf * mult + text_dim, 2*z_nc, ngf * mult * 2, norm_layer, nonlinearity, 'none', use_spect, use_coord)
-        self.prior = ResBlock(ngf * mult + text_dim, 2*z_nc, ngf * mult * 2, norm_layer, nonlinearity, 'none', use_spect, use_coord)
+        self.posterior = ResBlock(2*text_dim, 2*z_nc, ngf * mult * 2, norm_layer, nonlinearity, 'none', use_spect, use_coord)
+        self.prior =     ResBlock(2*text_dim, 2*z_nc, ngf * mult * 2, norm_layer, nonlinearity, 'none', use_spect, use_coord)
 
-    def forward(self, img_m, sentence_embedding, img_c=None):
+    def forward(self, img_m, sentence_embedding, word_embeddings, text_mask, image_mask, img_c=None):
         """
         :param img_m: image with mask regions I_m
         :param sentence_embedding: the sentence embedding of I
+        :param word_embeddings: word embedding of I
+        :param text_mask: mask of word sequence of word_embeddings
+        :param image_mask: mask of Im and Ic, need to scale if apply to fm
         :param img_c: complement of I_m, the mask regions
         :return distribution: distribution of mask regions, for training we have two paths, testing one path
         :return feature: the conditional feature f_m, and the previous f_pre for auto context attention
+        :return text_feature: word and sentence features
         """
 
         if type(img_c) != type(None):
@@ -257,15 +261,37 @@ class TextualResEncoder(nn.Module):
 
         # infer part
         # during the training, we have two paths, during the testing, we only have one paths
-        if type(img_c) != type(None):
-            distribution = self.two_paths(out, sentence_embedding)
-            return distribution, feature
-        else:
-            distribution = self.one_path(out, sentence_embedding)
-            return distribution, feature
+        image_mask = task.scale_img(image_mask, size=[feature[-1].size(2), feature[-1].size(3)])
+        if image_mask.size(1) == 3:
+            image_mask = image_mask.chunk(3, dim=1)[0]
 
-    def one_path(self, f_in, sentence_embedding):
+        if type(img_c) != type(None):
+            # adapt to word embedding, compute weighted word embedding with fm separately
+            f_m_g, f_m_rec = feature[-1].chunk(2)
+            img_mask_g = image_mask
+            img_mask_rec = 1 - img_mask_g
+            weighted_word_embedding_rec = self.word_attention(
+                        f_m_rec, word_embeddings, mask=text_mask, image_mask=img_mask_rec, inverse_attention=False)
+            weighted_word_embedding_g = self.word_attention(
+                        f_m_g, word_embeddings, mask=text_mask, image_mask=img_mask_g, inverse_attention=True)
+
+            weighted_word_embedding =  torch.cat([weighted_word_embedding_g, weighted_word_embedding_rec])
+            distribution, f_text = self.two_paths(out, sentence_embedding, weighted_word_embedding)
+
+            return distribution, feature, f_text
+        else:
+            # adapt to word embedding, compute weighted word embedding with fm of one path
+            f_m = feature[-1]
+            weighted_word_embedding = self.word_attention(
+                f_m, word_embeddings, mask=text_mask, image_mask=image_mask, inverse_attention=True)
+
+            distribution, f_text = self.one_path(out, sentence_embedding, weighted_word_embedding)
+
+            return distribution, feature, f_text
+
+    def one_path(self, f_in, sentence_embedding, weighted_word_embedding):
         """one path for baseline training or testing"""
+        # TOTEST: adapt to word embedding, compute distribution with word embedding.
         f_m = f_in
         distribution = []
 
@@ -279,31 +305,34 @@ class TextualResEncoder(nn.Module):
         ix, iw = f_m.size(2), f_m.size(3)
         sentence_dim = sentence_embedding.size(1)
         sentence_embedding_replication = sentence_embedding.view(-1, sentence_dim, 1, 1).repeat(1, 1, ix, iw)
-        f_m_sentencce = torch.cat([f_m, sentence_embedding_replication], dim=1)
-        o = self.prior(f_m_sentencce)
+        f_text = torch.cat([sentence_embedding_replication, weighted_word_embedding], dim=1)
+
+        o = self.prior(f_text)
         q_mu, q_std = torch.split(o, self.z_nc, dim=1)
         distribution.append([q_mu, F.softplus(q_std)])
 
-        return distribution
+        return distribution, f_text
 
-    def two_paths(self, f_in, sentence_embedding):
+    def two_paths(self, f_in, sentence_embedding, weighted_word_embedding):
         """two paths for the training"""
         f_m, f_c = f_in.chunk(2)
+        weighted_word_embedding_m, weighted_word_embedding_c = weighted_word_embedding.chunk(2)
         distributions = []
 
         # get distribution
-        # use sentence embedding here
+        # use text embedding here
         ix, iw = f_c.size(2), f_c.size(3)
         sentence_dim = sentence_embedding.size(1)
         sentence_embedding_replication = sentence_embedding.view(-1, sentence_dim, 1, 1).repeat(1, 1, ix, iw)
-        f_c_sentnece = torch.cat([f_c, sentence_embedding_replication], dim=1)
-        o = self.posterior(f_c_sentnece)
+
+        f_text_c = torch.cat([sentence_embedding_replication, weighted_word_embedding_c], dim=1)
+        o = self.posterior(f_text_c)
         p_mu, p_std = torch.split(o, self.z_nc, dim=1)
 
-        distribution = self.one_path(f_m, sentence_embedding)
+        distribution, f_text_m = self.one_path(f_m, sentence_embedding, weighted_word_embedding_m)
         distributions.append([p_mu, F.softplus(p_std), distribution[0][0], distribution[0][1]])
 
-        return distributions
+        return distributions, torch.cat([f_text_m, f_text_c], dim=0)
 
 class AttTextualResEncoder(nn.Module):
     """
@@ -408,7 +437,6 @@ class AttTextualResEncoder(nn.Module):
 
     def one_path(self, f_in, sentence_embedding, weighted_word_embedding):
         """one path for baseline training or testing"""
-        # TOTEST: adapt to word embedding, compute distribution with word embedding.
         f_m = f_in
         distribution = []
 
@@ -1323,8 +1351,8 @@ class TextualResGenerator(nn.Module):
     :param activation: activation function 'ReLU, SELU, LeakyReLU, PReLU'
     :param output_scale: Different output scales
     """
-    def __init__(self, output_nc=3, ngf=32, z_nc=256, img_f=256, L=0, layers=5, norm='instance', activation='ReLU',
-                 output_scale=4, use_spect=True, use_coord=False, use_attn=True, text_dim=256):
+    def __init__(self, output_nc=3, f_text_dim=384, ngf=64, z_nc=128, img_f=256, L=1, layers=6, norm='batch', activation='ReLU',
+                 output_scale=1, use_spect=True, use_coord=False, use_attn=True):
         super(TextualResGenerator, self).__init__()
 
         self.layers = layers
@@ -1335,10 +1363,12 @@ class TextualResGenerator(nn.Module):
         norm_layer = get_norm_layer(norm_type=norm)
         nonlinearity = get_nonlinearity_layer(activation_type=activation)
         # latent z to feature
-        mult = min(2 ** (layers-1), img_f // ngf) # the upper bound is img_f filters. mult is the hidden size of filters.
+        mult = min(2 ** (layers-1), img_f // ngf)
+        # input -> hidden
         self.generator = ResBlock(z_nc, ngf * mult, ngf * mult, None, nonlinearity, 'none', use_spect, use_coord)
+        self.f_transformer = ResBlock(f_text_dim, ngf * mult, ngf * mult, None, nonlinearity, 'none', use_spect, use_coord)
 
-        # transform, actually not used in Plu model.
+        # transform
         for i in range(self.L):
             block = ResBlock(ngf * mult, ngf * mult, ngf * mult, None, nonlinearity, 'none', use_spect, use_coord)
             setattr(self, 'generator' + str(i), block)
@@ -1354,36 +1384,30 @@ class TextualResGenerator(nn.Module):
                 # upconv = ResBlock(ngf * mult_prev, ngf * mult, ngf * mult, norm_layer, nonlinearity, 'up', True)
                 upconv = ResBlockDecoder(ngf * mult_prev , ngf * mult, ngf * mult, norm_layer, nonlinearity, use_spect, use_coord)
             setattr(self, 'decoder' + str(i), upconv)
-            # short+long term attention part
-            if i == 1 and use_attn:
-                attn = Auto_Attn(ngf*mult, None)
-                setattr(self, 'attn' + str(i), attn)
-                text_transfer = ResBlock(ngf * mult + text_dim, ngf * mult + text_dim, ngf * mult, None, nonlinearity, 'none', use_spect, use_coord)
-                setattr(self, 'text_transfer', text_transfer)
-                mult += text_dim // ngf
             # output part
             if i > layers - output_scale - 1:
                 outconv = Output(ngf * mult, output_nc, 3, None, nonlinearity, use_spect, use_coord)
                 setattr(self, 'out' + str(i), outconv)
+            # short+long term attention part
+            if i == 1 and use_attn:
+                attn = Auto_Attn(ngf*mult, None)
+                setattr(self, 'attn' + str(i), attn)
 
-    def forward(self, z, f_m=None, f_e=None, f_word=None, mask=None):
+    def forward(self, z, f_text=None, f_e=None, mask=None):
         """
         ResNet Generator Network
         :param z: latent vector
         :param f_m: feature of valid regions for conditional VAG-GAN
         :param f_e: previous encoder feature for short+long term attention layer
-        :param f_word: feature from word embedding and image's attention
         :return results: different scale generation outputs
         """
-
-        f = self.generator(z) # [nb, 256, 8, 8]
+        f = self.generator(z)
         for i in range(self.L):
              generator = getattr(self, 'generator' + str(i)) # dimension not change
              f = generator(f)
-
+        f_text_trans = self.f_transformer(f_text)
         # the features come from mask regions and valid regions, we directly add them together
-        # TOTEST: decide wether to remove this skip connect because of the miss match of sentence embedding.
-        out = f + f_m
+        out = f_text_trans + f
         results= []
         attn = 0
         for i in range(self.layers):
@@ -1393,10 +1417,6 @@ class TextualResGenerator(nn.Module):
                 # auto attention
                 model = getattr(self, 'attn' + str(i))
                 out, attn = model(out, f_e, mask)
-                # add f_word add word embedding here? or earlier?
-                model = getattr(self, 'text_transfer')
-                out = torch.cat([out, f_word], dim=1)
-                out = model(out)
             if i > self.layers - self.output_scale - 1:
                 model = getattr(self, 'out' + str(i))
                 output = model(out)

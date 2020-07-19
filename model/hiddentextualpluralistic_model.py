@@ -146,7 +146,6 @@ class HiddenTextualPluralistic(BaseModel):
         self.save_results(self.img_m, data_name='mask')
 
         # encoder process
-        # TOTEST: adapt to word embedding, call AttTextualResEncoder
         distribution, f, f_text = self.net_E(
             self.img_m, self.sentence_embedding, self.word_embeddings, self.text_mask, self.mask)
         variation_factor = 0. if self.opt.no_variance else 1.
