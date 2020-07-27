@@ -53,9 +53,8 @@ except ImportError:
 from inception import InceptionV3
 
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-parser.add_argument('path', type=str, nargs=2,
-                    help=('Path to the generated images or '
-                          'to .npz statistic files'))
+parser.add_argument('path', type=str, nargs=1,
+                    help=('Path to the generated and true images'))
 parser.add_argument('--batch-size', type=int, default=50,
                     help='Batch size to use')
 parser.add_argument('--dims', type=int, default=2048,
@@ -224,25 +223,10 @@ def calculate_activation_statistics(files, model, batch_size=50,
     return mu, sigma
 
 
-def _compute_statistics_of_path(path, model, batch_size, dims, cuda):
-    if path.endswith('.npz'):
-        f = np.load(path)
-        m, s = f['mu'][:], f['sigma'][:]
-        f.close()
-    else:
-        path = pathlib.Path(path)
-        files = list(path.glob('*.jpg')) + list(path.glob('*.png'))
-        m, s = calculate_activation_statistics(files, model, batch_size,
-                                               dims, cuda)
-
-    return m, s
-
-
-def calculate_fid_given_paths(paths, batch_size, cuda, dims):
+def calculate_fid_given_paths(path, batch_size, cuda, dims):
     """Calculates the FID of two paths"""
-    for p in paths:
-        if not os.path.exists(p):
-            raise RuntimeError('Invalid path: %s' % p)
+    if not os.path.exists(path):
+        raise RuntimeError('Invalid path: %s' % path)
 
     block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
 
@@ -250,10 +234,17 @@ def calculate_fid_given_paths(paths, batch_size, cuda, dims):
     if cuda:
         model.cuda()
 
-    m1, s1 = _compute_statistics_of_path(paths[0], model, batch_size,
-                                         dims, cuda)
-    m2, s2 = _compute_statistics_of_path(paths[1], model, batch_size,
-                                         dims, cuda)
+
+    path = pathlib.Path(path)
+    truths, predicts = [],[]
+    for file in (list(path.glob('*.jpg')) + list(path.glob('*.png'))):
+        if 'truth' in file:
+            truths.append(file)
+        elif 'out' in file:
+            predicts.append(file)
+
+    m1, s1 = calculate_activation_statistics(truths, model, batch_size, dims, cuda)
+    m2, s2 = calculate_activation_statistics(predicts, model, batch_size, dims, cuda)
     fid_value = calculate_frechet_distance(m1, s1, m2, s2)
 
     return fid_value
