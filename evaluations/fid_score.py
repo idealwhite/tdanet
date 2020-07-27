@@ -53,7 +53,7 @@ except ImportError:
 from inception import InceptionV3
 
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-parser.add_argument('path', type=str, nargs=1,
+parser.add_argument('path', type=str,
                     help=('Path to the generated and true images'))
 parser.add_argument('--batch-size', type=int, default=50,
                     help='Batch size to use')
