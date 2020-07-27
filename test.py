@@ -20,8 +20,6 @@ if __name__=='__main__':
     visualizer = visualizer.Visualizer(opt)
 
     for i, data in enumerate(dataset):
-        if i > opt.how_many:
-            break
         with torch.no_grad():
             model.set_input(data)
             model.test()
