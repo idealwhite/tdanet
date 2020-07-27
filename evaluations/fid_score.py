@@ -235,13 +235,12 @@ def calculate_fid_given_paths(path, batch_size, cuda, dims):
         model.cuda()
 
 
-    path = pathlib.Path(path)
     truths, predicts = [],[]
-    for file in (list(path.glob('*.jpg')) + list(path.glob('*.png'))):
+    for file in os.listdir(path):
         if 'truth' in file:
-            truths.append(file)
+            truths.append(path + '/' + file)
         elif 'out' in file:
-            predicts.append(file)
+            predicts.append(path + '/' + file)
 
     m1, s1 = calculate_activation_statistics(truths, model, batch_size, dims, cuda)
     m2, s2 = calculate_activation_statistics(predicts, model, batch_size, dims, cuda)
