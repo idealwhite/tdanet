@@ -23,4 +23,12 @@ if __name__=='__main__':
         with torch.no_grad():
             model.set_input(data)
             model.test()
-    os.system('ls '+opt.results_dir+'/*_truth.png > eval_'+opt.results_dir.split('/')[-1]+'.flist')
+
+    truths = []
+    for file in os.listdir(opt.results_dir):
+        if file.endswith('_truth.png'):
+            truths.append(opt.results_dir + '/' + file)
+
+    with open('eval_'+opt.results_dir.split('/')[-1]+'.flist', 'w') as f:
+        for file in truths:
+            f.write(file+'\n')
