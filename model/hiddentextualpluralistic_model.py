@@ -85,7 +85,7 @@ class HiddenTextualPluralistic(BaseModel):
                                                 lr=opt.lr, betas=(0.0, 0.999))
             self.optimizers.append(self.optimizer_G)
             self.optimizers.append(self.optimizer_D)
-        # load the pretrained model and schedulers
+
         self.setup(opt)
 
     def _init_language_model(self, text_config):

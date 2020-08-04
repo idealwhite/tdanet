@@ -1610,17 +1610,17 @@ from torchvision import models
 import torch.utils.model_zoo as model_zoo
 
 class CNN_ENCODER(nn.Module):
-    def __init__(self, nef):
+    def __init__(self, nef, pre_train=False):
         super(CNN_ENCODER, self).__init__()
         self.nef = nef  # define a uniform ranker
 
         model = models.inception_v3()
-        url = 'https://download.pytorch.org/models/inception_v3_google-1a9a5a14.pth'
-        model.load_state_dict(model_zoo.load_url(url))
-        for param in model.parameters():
-            param.requires_grad = False
-        print('Load pretrained model from ', url)
-        # print(model)
+        if pre_train:
+            url = 'https://download.pytorch.org/models/inception_v3_google-1a9a5a14.pth'
+            model.load_state_dict(model_zoo.load_url(url))
+            for param in model.parameters():
+                param.requires_grad = False
+            print('Load pretrained model from ', url)
 
         self.define_module(model)
         self.init_trainable_weights()

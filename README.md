@@ -1,42 +1,25 @@
 
-# Pluralistic Image Completion
+# TDANet: Text-Guided Neural Image Inpainting 
 [ArXiv](https://arxiv.org/abs/1903.04227) | [Project Page](http://www.chuanxiaz.com/publication/pluralistic/) | [Online Demo](http://www.chuanxiaz.com/project/pluralistic/) | [Video(demo)](https://www.youtube.com/watch?v=9V7rNoLVmSs)
 <br>
 
-This repository implements the training, testing and editing tools for "Pluralistic Image Completion" by [Chuanxia Zheng](http://www.chuanxiaz.com), [Tat-Jen Cham](http://www.ntu.edu.sg/home/astjcham/) and [Jianfei Cai](http://www.ntu.edu.sg/home/asjfcai/) at NTU. Given one masked image, the proposed **Pluralistic** model is able to generate *multiple* and *diverse* plausible results with various structure, color and texture.
+This repository implements the training, testing and editing tools for "Pluralistic Image Completion" 
+by Lisai Zhang, Qingcai Chen, Baotian Hu and Shuoran Jiang. Given one masked image, the proposed 
+**TDANet** is able to generate diverse plausible results according to guidance text.
 
-## Editing example
+## Inpainting example
 
-<img src='images/free_form.gif' align="center">
+<img src='images/inpainting_example.png' align="center">
 
-## Example results
+## Manipulation Extension example
 
-<table>
-<tr>
-<td><img src='images/mask_celeba_185755.jpg'></td>
-<td><img src='images/celeba185755.gif'></td>
-<td><img src='images/mask_celeba_184919.jpg'></td>
-<td><img src='images/celeba184919.gif'></td>
-</tr>
-
-<tr>
-<td><img src='images/mask_paris_085.png'></td>
-<td><img src='images/paris85.gif'></td>
-<td><img src='images/mask_Places_00030002.jpg'></td>
-<td><img src='images/place30002.gif'></td>
-</tr>
-
-</table>
-
-Example completion results of our method on images of face ([CelebA](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html)), building ([Paris](https://github.com/pathak22/context-encoder)), and natural scenes ([Places2](http://places2.csail.mit.edu/)) with center masks (masks shown in gray). For each group, the masked input image is shown left, followed by sampled results from our model without any post-processing. The results are diverse and plusible.
-
-## [More results on project page](http://www.chuanxiaz.com/publication/pluralistic/)
+<img src='images/manipulation_example.png' align="center">
 
 # Getting started
 ## Installation
-This code was tested with Pytoch 0.4.0, CUDA 9.0, Python 3.6 and Ubuntu 16.04
+This code was tested with Pytoch 1.2.0, CUDA 10.1, Python 3.6 and Ubuntu 16.04
 
-- Install Pytoch 0.4, torchvision, and other dependencies from [http://pytorch.org](http://pytorch.org)
+- Install Pytoch 1.2.0, torchvision, and other dependencies from [http://pytorch.org](http://pytorch.org)
 - Install python libraries [visdom](https://github.com/facebookresearch/visdom) and [dominate](https://github.com/Knio/dominate) for visualization
 
 ```
@@ -45,36 +28,40 @@ pip install visdom dominate
 - Clone this repo:
 
 ```
-git clone https://github.com/lyndonzheng/Pluralistic
-cd Pluralistic
+git clone https://github.com/idealwhite/tdanet
+cd tdanet
 ```
 
 ## Datasets
-- ```face dataset```: 24183 training images and  2824 test images from [CelebA](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html) and use the algorithm of [Growing GANs](https://github.com/tkarras/progressive_growing_of_gans) to get the high-resolution CelebA-HQ dataset
-- ```building dataset```: 14900 training images and 100 test images from [Paris](https://github.com/pathak22/context-encoder)
-- ```natural scenery```: original training and val images from [Places2](http://places2.csail.mit.edu/)
-- ```object``` original training images from [ImageNet](http://www.image-net.org/).
+- ```CUB_200``` original training images from [ImageNet](http://www.image-net.org/).
+- ```COCO``` original training images from [ImageNet](http://www.image-net.org/).
 
 ## Training
-- Train a model (**default**: random irregular and irregular holes):
-
 ```
-python train.py --name celeba_random --img_file your_image_path
+python train.py --name tda_bird  --gpu_ids 0 --model tdanet
 ```
-- Set ```--mask_type``` in options/base_options.py for different training masks. ```--mask_file``` path is needed for **external irregular mask**, such as the irregular mask dataset provided by [Liu et al.](http://masc.cs.gmu.edu/wiki/partialconv) and [Karim lskakov ](https://github.com/karfly/qd-imd).
+- Set ```--mask_type``` in options/base_options.py for different training masks. ```--mask_file``` path is needed for **object mask**,
+ ```--text_config``` refer to the yml configuration file for text setup, ```--img_file``` as the image file dir or file list.
 - To view training results and loss plots, run ```python -m visdom.server``` and copy the URL [http://localhost:8097](http://localhost:8097).
 - Training models will be saved under the **checkpoints** folder.
 - The more training options can be found in **options** folder.
 
 ## Testing
 
-- Test the model
+```
+python test.py --name textualinpainting_mask0124_update-lm_detach-embedding --img_file datasets/coco/valid.flist --results_dir RESULT_DIR --mask_type 4 --no_shuffle --gpu_ids 1 --nsampling 1 --no_variance --text_config config.coco.yml --mask_file ./datasets/coco/image_mask_coco_all.json
+```
+- Set ```--mask_type``` in options/base_options.py test various masks. ```--mask_file``` path is needed for **object mask**,
+ ```--text_config``` refer to the yml configuration file for text setup, ```--img_file``` as the test image file dir or file list.
+- The default results will be saved under the *results* folder. Set ```--results_dir``` for a new path to save the result.
+
+## Evaluation
 
 ```
-python test.py  --name celeba_random --img_file your_image_path
+python evaluation.py --batch_test 60
 ```
-- Set ```--mask_type``` in options/base_options.py to test various masks. ```--mask_file``` path is needed for **3. external irregular mask**,
-- The default results will be saved under the *results* folder. Set ```--results_dir``` for a new path to save the result.
+- Set ```--ground_truth_path``` to the dir of ground truth image path or list. ```--save_path``` as the result dir.
+
 
 ## Pretrained Models
 Download the pre-trained models using the following links and put them under```checkpoints/``` directory.
@@ -119,81 +106,22 @@ The steps are as follows:
 6. click 'save' button to save the results.
 ```
 
-## Editing Example Results
-- **Results (original, input, output) for object removing**
-
-<table>
-<tr>
-<td><img src='images/removing/original_celeba189756.jpg'></td>
-<td><img src='images/removing/original_celeba199782.jpg'></td>
-<td><img src='images/removing/original_paris085.png'></td>
-<td><img src='images/removing/original_place00013547.jpg'></td>
-</tr>
-
-<tr>
-<td><img src='images/removing/mask_celeba189756.jpg'></td>
-<td><img src='images/removing/mask_celeba199782.jpg'></td>
-<td><img src='images/removing/mask_paris085.png'></td>
-<td><img src='images/removing/mask_place00013547.jpg'></td>
-
-</tr>
-
-
-<tr>
-<td><img src='images/removing/result_celeba189756.jpg'></td>
-<td><img src='images/removing/result_celeba199782.jpg'></td>
-<td><img src='images/removing/result_paris085.png'></td>
-<td><img src='images/removing/result_place00013547.jpg'></td>
-</tr>
-
-</table>
-
-- **Results (input, output) for face playing.** When mask half or right face, the diversity will be small for the short+long term attention layer will copy information from other side. When mask top or down face, the diversity will be large.
-
-<table>
-<tr>
-<td><img src='images/face_playing/mask_celeba184054.jpg'></td>
-<td><img src='images/face_playing/result_celeba184054.gif'></td>
-<td><img src='images/face_playing/mask_celeba182927.jpg'></td>
-<td><img src='images/face_playing/result_celeba182927.gif'></td>
-</tr>
-
-<tr>
-<td><img src='images/face_playing/mask_celeba192793.jpg'></td>
-<td><img src='images/face_playing/result_celeba192793.gif'></td>
-<td><img src='images/face_playing/mask_celeba197462.jpg'></td>
-<td><img src='images/face_playing/result_celeba197462.gif'></td>
-</tr>
-
-<tr>
-<td><img src='images/face_playing/mask_celeba198496.jpg'></td>
-<td><img src='images/face_playing/result_celeba198496.jpg'></td>
-<td><img src='images/face_playing/mask_celeba190952.jpg'></td>
-<td><img src='images/face_playing/result_celeba190952.jpg'></td>
-</tr>
-
-
-</table>
-
 ## Next
-
-- Free form mask for various Datasets
-- Higher resolution image completion
+- Improvement on COCO quality
 
 ## License
-<br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons Attribution-NonCommercial 4.0 International License</a>.
 
-This software is for educational and academic research purpose only. If you wish to obtain a commercial royalty bearing license to this software, please contact us at chuanxia001@e.ntu.edu.sg.
+This software is for educational and academic research purpose only. If you wish to obtain a commercial royalty bearing license to
+ this software, please contact us at lisaizhang@foxmail.com.
 
 ## Citation
-
 If you use this code for your research, please cite our paper.
 ```
-@inproceedings{zheng2019pluralistic,
-  title={Pluralistic Image Completion},
+@inproceedings{tdanet,
+  title={Text-Guided Neural Image Inpainting},
   author={Zheng, Chuanxia and Cham, Tat-Jen and Cai, Jianfei},
-  booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},
+  booktitle={Proceedings of the 28th ACM International Conference on Multimedia (MM '20)},
   pages={1438--1447},
-  year={2019}
+  year={2020}
 }
 ```
