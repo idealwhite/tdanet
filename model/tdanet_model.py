@@ -6,10 +6,10 @@ import itertools
 from options.global_config import TextConfig
 import pickle
 
-class TextualInpainting(BaseModel):
-    """This class implements the pluralistic image completion, for 256*256 resolution image inpainting"""
+class TDAnet(BaseModel):
+    """This class implements the text-guided image completion, for 256*256 resolution"""
     def name(self):
-        return "TextualInpainting Image Completion"
+        return "TDAnet Image Completion"
 
     @staticmethod
     def modify_options(parser, is_train=True):
@@ -51,9 +51,9 @@ class TextualInpainting(BaseModel):
         self.max_pool = None if opt.no_maxpooling else 'max'
 
         # define the inpainting model
-        self.net_E = network.define_textual_e(ngf=32, z_nc=256, img_f=256, layers=5, norm='none', activation='LeakyReLU',
+        self.net_E = network.define_att_textual_e(ngf=32, z_nc=256, img_f=256, layers=5, norm='none', activation='LeakyReLU',
                           init_type='orthogonal', gpu_ids=opt.gpu_ids, image_dim=256, text_dim=256, multi_peak=False, pool_attention=self.max_pool)
-        self.net_G = network.define_textual_g(f_text_dim=512, ngf=32, z_nc=256, img_f=256, L=0, layers=5, output_scale=opt.output_scale,
+        self.net_G = network.define_hidden_textual_g(f_text_dim=768, ngf=32, z_nc=256, img_f=256, L=0, layers=5, output_scale=opt.output_scale,
                                       norm='instance', activation='LeakyReLU', init_type='orthogonal', gpu_ids=opt.gpu_ids)
         # define the discriminator model
         self.net_D = network.define_d(ndf=32, img_f=128, layers=5, model_type='ResDis', init_type='orthogonal', gpu_ids=opt.gpu_ids)
@@ -85,7 +85,7 @@ class TextualInpainting(BaseModel):
                                                 lr=opt.lr, betas=(0.0, 0.999))
             self.optimizers.append(self.optimizer_G)
             self.optimizers.append(self.optimizer_D)
-        # load the pretrained model and schedulers
+
         self.setup(opt)
 
     def _init_language_model(self, text_config):
@@ -146,7 +146,6 @@ class TextualInpainting(BaseModel):
         self.save_results(self.img_m, data_name='mask')
 
         # encoder process
-        # TOTEST: adapt to word embedding, call AttTextualResEncoder
         distribution, f, f_text = self.net_E(
             self.img_m, self.sentence_embedding, self.word_embeddings, self.text_mask, self.mask)
         variation_factor = 0. if self.opt.no_variance else 1.

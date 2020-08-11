@@ -34,9 +34,11 @@ cd tdanet
 - Download the pre-trained DAMSM model in [AttnGAN](https://github.com/taoxugit/AttnGAN) and save to *dataset/*
  directory specified in config.bird.yml/config.coco.yml file.
 
+
 ## Datasets
 - ```CUB_200``` original training images from [Caltech-UCSD Birds 200](http://www.vision.caltech.edu/visipedia/CUB-200.html).
 - ```COCO``` original training images from [MS COCO](https://cocodataset.org/#download).
+- **Note: Please wait for my processed captioning-image files and download them to corresponding dataset folders.**
 
 ## Training
 ```

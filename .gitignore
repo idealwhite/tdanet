@@ -1,6 +1,4 @@
 .idea*
-./datasets/*
 *.pyc
 ./checkpoints
-*.png
 *.pt
