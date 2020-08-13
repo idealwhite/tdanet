@@ -22,6 +22,7 @@ This code was tested with Pytoch 1.2.0, CUDA 10.1, Python 3.6 and Ubuntu 16.04
 - Install Pytoch 1.2.0, torchvision, and other dependencies from [http://pytorch.org](http://pytorch.org)
 - Install python libraries [visdom](https://github.com/facebookresearch/visdom) and [dominate](https://github.com/Knio/dominate) for visualization
 
+
 ```
 pip install visdom dominate
 ```
@@ -34,12 +35,12 @@ cd tdanet
 - Download the pre-trained DAMSM model in [AttnGAN](https://github.com/taoxugit/AttnGAN) and save to *dataset/*
  directory specified in config.bird.yml/config.coco.yml file.
 
-
 ## Datasets
-- ```CUB_200``` original training images from [Caltech-UCSD Birds 200](http://www.vision.caltech.edu/visipedia/CUB-200.html).
-- ```COCO``` original training images from [MS COCO](https://cocodataset.org/#download).
-- **Note: Please wait for my processed captioning-image files and download them to corresponding dataset folders.**
-
+- ```CUB_200```: dataset from [Caltech-UCSD Birds 200](http://www.vision.caltech.edu/visipedia/CUB-200.html).
+- ```COCO```: object detection 2014 datset from [MS COCO](https://cocodataset.org/#download).
+- Download the pre-processed datafiles including train/test split, caption-image mapping, image sampling 
+ and pre-trained [DAMSM](https://github.com/taoxugit/AttnGAN) weights from [GoogleDrive](https://drive.google.com/file/d/1_B7gdUwStck8Kop9hNL2YUNWF6hIxCNx/view?usp=sharing) and extarct them 
+ to *dataset/* directory as specified in config.bird.yml/config.coco.yml.
 ## Training
 ```
 python train.py --name tda_bird  --gpu_ids 0 --model tdanet
@@ -47,19 +48,8 @@ python train.py --name tda_bird  --gpu_ids 0 --model tdanet
 - Add ```--mask_type``` in options/base_options.py for different training masks. ```--mask_file``` path is needed for **object mask**,
  ```--text_config``` refer to the yml configuration file for text setup, ```--img_file``` as the image file dir or file list.
 - To view training results and loss plots, run ```python -m visdom.server``` and copy the URL [http://localhost:8097](http://localhost:8097).
-- Training models will be saved under the **checkpoints** folder.
-- The more training options can be found in **options** folder.
-
-## Testing
-```
-python test.py --name tda_bird --no_shuffle --gpu_ids 1 --nsampling 1 --no_variance
-```
-- Add ```--mask_type``` in options/base_options.py test various masks. 
-```--mask_file``` path to json file is needed for *object mask*,
- ```--text_config``` refer to the yml configuration file for text setup, 
- ```--img_file``` as the test image file dir or file list.
- set ```--no_variance``` to sample from the center of latent distribution.
-- The default results will be saved under the *results* folder. Set ```--results_dir``` for a new path to save the result.
+- Training models will be saved under the **./checkpoints** folder.
+- The more training options can be found in **./options** folder.
 
 ## Evaluation
 
@@ -93,7 +83,6 @@ python ui_main.py
 The complete version is in development.
 
 ## TODO
-- Upload the pre-processed caption documents and cached mask files.
 - Upload the pre-trained models.
 - Further improvement on COCO quality.
 
