@@ -3,17 +3,17 @@
 [ArXiv](https://arxiv.org/abs/2004.03212) 
 <br>
 
-This repository implements the training, testing and editing tools for "Text-Guided Neural Image Inpainting" 
+This repository implements the paper "Text-Guided Neural Image Inpainting" 
 by Lisai Zhang, Qingcai Chen, Baotian Hu and Shuoran Jiang. Given one masked image, the proposed 
-**TDANet** is able to generate diverse plausible results according to guidance text.
+**TDANet** generates diverse plausible results according to guidance text.
 
 ## Inpainting example
 
-<img src='https://github.com/idealwhite/tdanet/raw/master/images/inpainting_example.png' align="center">
+<img src='https://github.com/idealwhite/tdanet/tree/master/images/inpainting_example.png' align="center">
 
 ## Manipulation Extension example
 
-<img src='https://github.com/idealwhite/tdanet/raw/master/images/manipulation_example.png' align="center">
+<img src='https://github.com/idealwhite/tdanet/tree/master/images/manipulation_example.png' align="center">
 
 # Getting started
 ## Installation
@@ -92,8 +92,10 @@ python ui_main.py
 
 The complete version is in development.
 
-## Next
-- Improvement on COCO quality
+## TODO
+- Upload the pre-processed caption documents and cached mask files.
+- Upload the pre-trained models.
+- Further improvement on COCO quality.
 
 ## License
 This software is for educational and academic research purpose only. If you wish to obtain a commercial royalty bearing license to
