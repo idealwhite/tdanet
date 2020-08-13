@@ -84,6 +84,7 @@ The complete version is in development.
 
 ## TODO
 - Upload the pre-trained models.
+- Debug the GUI application
 - Further improvement on COCO quality.
 
 ## License
