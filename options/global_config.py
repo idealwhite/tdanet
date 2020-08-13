@@ -29,14 +29,14 @@ class TextConfig(dict):
 DEFAULT_CONFIG = {
     'MAX_TEXT_LENGTH' : 128,
 
-    'VOCAB' : "./datasets/captions_vocab_bird.pickle",
-    'LANGUAGE_ENCODER' : "./datasets/text_encoder_bird.pth",
-    'IMAGE_ENCODER': "./datasets/image_encoder_bird.pth",
+    'VOCAB' : "./datasets/captions_vocab_bird.pickle",      # The path to DAMSM vocab pickle file
+    'LANGUAGE_ENCODER' : "./datasets/text_encoder_bird.pth",    # The path to DAMSM text encoder
+    'IMAGE_ENCODER': "./datasets/image_encoder_bird.pth",   # The path to DAMSM image encoder
     'EMBEDDING_DIM' : 256,
 
-    'CATE_IMAGE_TRAIN' : "./datasets/CUB_200_2011/cate_image_train.json",
-    'IMAGE_CATE_TRAIN' : "./datasets/CUB_200_2011/image_cate.json",
+    'CATE_IMAGE_TRAIN' : "./datasets/CUB_200_2011/cate_image_train.json",   # The path to category-image mapping cache file
+    'IMAGE_CATE_TRAIN' : "./datasets/CUB_200_2011/image_cate.json",     # The path to image-category mapping cache file
 
-    'CAPTION' : "./datasets/CUB_200_2011/caption.json",
+    'CAPTION' : "./datasets/CUB_200_2011/caption.json",     # The path to image-caption cache file
 
 }
