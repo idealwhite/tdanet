@@ -32,8 +32,7 @@ pip install visdom dominate
 git clone https://github.com/idealwhite/tdanet
 cd tdanet
 ```
-- Download the pre-trained DAMSM model in [AttnGAN](https://github.com/taoxugit/AttnGAN) and save to *dataset/*
- directory specified in config.bird.yml/config.coco.yml file.
+- Download the dataset and pre-processed files.
 
 ## Datasets
 - ```CUB_200```: dataset from [Caltech-UCSD Birds 200](http://www.vision.caltech.edu/visipedia/CUB-200.html).
