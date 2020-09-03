@@ -9,11 +9,11 @@ by Lisai Zhang, Qingcai Chen, Baotian Hu and Shuoran Jiang. Given one masked ima
 
 ## Inpainting example
 
-<img src='https://github.com/idealwhite/tdanet/tree/master/images/inpainting_example.png' align="center">
+<img src='https://github.com/idealwhite/tdanet/blob/master/images/inpainting_example.png' align="center">
 
 ## Manipulation Extension example
 
-<img src='https://github.com/idealwhite/tdanet/tree/master/images/manipulation_example.png' align="center">
+<img src='https://github.com/idealwhite/tdanet/blob/master/images/manipulation_example.png' align="center">
 
 # Getting started
 ## Installation
