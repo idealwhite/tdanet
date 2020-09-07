@@ -60,8 +60,8 @@ python evaluation.py --batch_test 60
 
 ## Pretrained Models
 Download the pre-trained models using the following links and put them under```checkpoints/``` directory.
-- ```bird inpainting```: Comming soon. 
-- ```coco inpainting```: Comming soon.
+- ```bird inpainting```: GoogleDrive[https://drive.google.com/file/d/1yGC3zPnngyrGtyWrMSYZaMXUbbiXWZGj/view?usp=sharing]. 
+- ```coco inpainting```: GoogleDrive[https://drive.google.com/file/d/1tqrvFFilYO3eolwqbdZYm0byQv_ahaoS/view?usp=sharing]. 
 
 The pre-trained model is preparing.
 
