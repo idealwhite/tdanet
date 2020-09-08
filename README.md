@@ -37,14 +37,14 @@ cd tdanet
 ## Datasets
 - ```CUB_200```: dataset from [Caltech-UCSD Birds 200](http://www.vision.caltech.edu/visipedia/CUB-200.html).
 - ```COCO```: object detection 2014 datset from [MS COCO](https://cocodataset.org/#download).
-- Download the pre-processed datafiles including train/test split, caption-image mapping, image sampling 
+- ```pre-processed datafiles```: train/test split, caption-image mapping, image sampling 
  and pre-trained [DAMSM](https://github.com/taoxugit/AttnGAN) weights from [GoogleDrive](https://drive.google.com/file/d/1_B7gdUwStck8Kop9hNL2YUNWF6hIxCNx/view?usp=sharing) and extarct them 
  to *dataset/* directory as specified in config.bird.yml/config.coco.yml.
 ## Training
 ```
 python train.py --name tda_bird  --gpu_ids 0 --model tdanet
 ```
-- Add ```--mask_type``` in options/base_options.py for different training masks. ```--mask_file``` path is needed for **object mask**,
+- **Important:** Add ```--mask_type``` in options/base_options.py for different training masks. ```--mask_file``` path is needed for **object mask**,
  ```--text_config``` refer to the yml configuration file for text setup, ```--img_file``` as the image file dir or file list.
 - To view training results and loss plots, run ```python -m visdom.server``` and copy the URL [http://localhost:8097](http://localhost:8097).
 - Training models will be saved under the **./checkpoints** folder.
@@ -62,8 +62,6 @@ python evaluation.py --batch_test 60
 Download the pre-trained models using the following links and put them under```checkpoints/``` directory.
 - ```bird inpainting```: [GoogleDrive](https://drive.google.com/file/d/1yGC3zPnngyrGtyWrMSYZaMXUbbiXWZGj/view?usp=sharing). 
 - ```coco inpainting```: [GoogleDrive](https://drive.google.com/file/d/1tqrvFFilYO3eolwqbdZYm0byQv_ahaoS/view?usp=sharing). 
-
-The pre-trained model is preparing.
 
 ## GUI
 
