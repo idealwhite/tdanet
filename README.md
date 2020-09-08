@@ -77,7 +77,7 @@ python -m visdom.server
 python ui_main.py
 ```
 
-The complete version is in development.
+The GUI could now only avaliable in debug mode, the complete version is in development.
 
 ## TODO
 - Debug the GUI application
