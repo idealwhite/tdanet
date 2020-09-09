@@ -51,7 +51,12 @@ python train.py --name tda_bird  --gpu_ids 0 --model tdanet
 - The more training options can be found in **./options** folder.
 
 ## Evaluation
+Test 
+```
+python test.py --name tda_bird  --img_file datasets/CUB_200_2011/test.flist --results_dir results/tda_bird  --how_many 200 --mask_file datasets/CUB_200_2011/test_mask.flist --mask_type 3 --no_shuffle --gpu_ids 0 --nsampling 1
+```
 
+Evaluate
 ```
 python evaluation.py --batch_test 60
 ```
