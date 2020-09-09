@@ -59,9 +59,7 @@ python evaluation.py --batch_test 60
 
 
 ## Pretrained Models
-Download the pre-trained models using the following links and put them under```checkpoints/``` directory.
-- ```bird inpainting```: [GoogleDrive](https://drive.google.com/file/d/1yGC3zPnngyrGtyWrMSYZaMXUbbiXWZGj/view?usp=sharing). 
-- ```coco inpainting```: [GoogleDrive](https://drive.google.com/file/d/1tqrvFFilYO3eolwqbdZYm0byQv_ahaoS/view?usp=sharing). 
+Download the pre-trained models [bird inpainting](https://drive.google.com/file/d/1yGC3zPnngyrGtyWrMSYZaMXUbbiXWZGj/view?usp=sharing) or [coco inpainting](https://drive.google.com/file/d/1tqrvFFilYO3eolwqbdZYm0byQv_ahaoS/view?usp=sharing) and put them under```checkpoints/``` directory.
 
 ## GUI
 
