@@ -40,20 +40,26 @@ cd tdanet
 - ```pre-processed datafiles```: train/test split, caption-image mapping, image sampling 
  and pre-trained [DAMSM](https://github.com/taoxugit/AttnGAN) weights from [GoogleDrive](https://drive.google.com/file/d/1_B7gdUwStck8Kop9hNL2YUNWF6hIxCNx/view?usp=sharing) and extarct them 
  to *dataset/* directory as specified in config.bird.yml/config.coco.yml.
-## Training
+## Training Demo
 ```
-python train.py --name tda_bird  --gpu_ids 0 --model tdanet
+python train.py --name tda_bird  --gpu_ids 0 --model tdanet --mask_type 0 1 2 3 --img_file ./datasets/CUB_200_2011/train.flist --mask_file ./datasets/CUB_200_2011/train_mask.flist --text_config config.bird.yml
 ```
 - **Important:** Add ```--mask_type``` in options/base_options.py for different training masks. ```--mask_file``` path is needed for **object mask**,
  ```--text_config``` refer to the yml configuration file for text setup, ```--img_file``` as the image file dir or file list.
 - To view training results and loss plots, run ```python -m visdom.server``` and copy the URL [http://localhost:8097](http://localhost:8097).
 - Training models will be saved under the **./checkpoints** folder.
 - The more training options can be found in **./options** folder.
+- **Suggestion:** use mask type 0 1 2 3 for CUB dataset and 0 1 2 4 for COCO dataset and train more than 2000 epochs. 
 
-## Evaluation
+## Evaluation Demo
+Test 
+```
+python test.py --name tda_bird  --img_file datasets/CUB_200_2011/test.flist --results_dir results/tda_bird  --how_many 200 --mask_file datasets/CUB_200_2011/test_mask.flist --mask_type 3 --no_shuffle --gpu_ids 0 --nsampling 1
+```
+A ```eval_tda_bird.flist``` will be generated after the test. Then in the evaluation, this file is used as the ground truth file list:
 
 ```
-python evaluation.py --batch_test 60
+python evaluation.py --batch_test 60 --ground_truth_path eval_tda_bird.flist --save_path results/tda_bird
 ```
 - Add ```--ground_truth_path``` to the dir of ground truth image path or list. ```--save_path``` as the result dir.
 
