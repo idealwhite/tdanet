@@ -26,10 +26,10 @@ This code was tested with Pytoch 1.2.0, CUDA 10.1, Python 3.6 and Ubuntu 16.04
 ```
 pip install visdom dominate
 ```
-- Clone this repo:
+- Clone this repo (we suggest to only clone the depth 1 version):
 
 ```
-git clone https://github.com/idealwhite/tdanet
+git clone https://github.com/idealwhite/tdanet --depth 1
 cd tdanet
 ```
 - Download the dataset and pre-processed files.
