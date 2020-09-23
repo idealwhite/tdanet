@@ -54,7 +54,7 @@ python train.py --name tda_bird  --gpu_ids 0 --model tdanet --mask_type 0 1 2 3 
 ## Evaluation Demo
 Test 
 ```
-python test.py --name tda_bird  --img_file datasets/CUB_200_2011/test.flist --results_dir results/tda_bird  --how_many 200 --mask_file datasets/CUB_200_2011/test_mask.flist --mask_type 3 --no_shuffle --gpu_ids 0 --nsampling 1
+python test.py --name tda_bird  --img_file datasets/CUB_200_2011/test.flist --results_dir results/tda_bird  --mask_file datasets/CUB_200_2011/test_mask.flist --mask_type 3 --no_shuffle --gpu_ids 0 --nsampling 1
 ```
 A ```eval_tda_bird.flist``` will be generated after the test. Then in the evaluation, this file is used as the ground truth file list:
 
