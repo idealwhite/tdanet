@@ -49,7 +49,7 @@ python train.py --name tda_bird  --gpu_ids 0 --model tdanet --mask_type 0 1 2 3 
 - To view training results and loss plots, run ```python -m visdom.server``` and copy the URL [http://localhost:8097](http://localhost:8097).
 - Training models will be saved under the **./checkpoints** folder.
 - The more training options can be found in **./options** folder.
-- **Suggestion:** use mask type 0 1 2 3 for CUB dataset and 0 1 2 4 for COCO dataset and train more than 2000 epochs. 
+- **Suggestion:** use mask type 0 1 2 3 for CUB dataset and 0 1 2 4 for COCO dataset. Train more than 2000 epochs for CUB and 200 epochs for COCO. 
 
 ## Evaluation Demo
 Test 
