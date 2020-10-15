@@ -1,6 +1,6 @@
 
 # TDANet: Text-Guided Neural Image Inpainting 
-[MM](https://dl.acm.org/doi/10.1145/3394171.3414017)|[ArXiv](https://arxiv.org/abs/2004.03212) 
+[MM](https://dl.acm.org/doi/10.1145/3394171.3414017) | [ArXiv](https://arxiv.org/abs/2004.03212) 
 <br>
 
 This repository implements the paper "Text-Guided Neural Image Inpainting" 
@@ -101,9 +101,6 @@ If you use this code for your research, please cite our paper.
 author = {Zhang, Lisai and Chen, Qingcai and Hu, Baotian and Jiang, Shuoran},
 title = {Text-Guided Neural Image Inpainting},
 year = {2020},
-publisher = {Association for Computing Machinery},
-address = {New York, NY, USA},
-url = {https://doi.org/10.1145/3394171.3414017},
 booktitle = {Proceedings of the 28th ACM International Conference on Multimedia},
 pages = {1302–1310},
 location = {Seattle, WA, USA},
