@@ -32,13 +32,13 @@ pip install visdom dominate
 git clone https://github.com/idealwhite/tdanet --depth 1
 cd tdanet
 ```
-- Download the dataset and pre-processed files.
+- Download the dataset and pre-processed files as in following steps.
 
 ## Datasets
 - ```CUB_200```: dataset from [Caltech-UCSD Birds 200](http://www.vision.caltech.edu/visipedia/CUB-200.html).
 - ```COCO```: object detection 2014 datset from [MS COCO](https://cocodataset.org/#download).
 - ```pre-processed datafiles```: train/test split, caption-image mapping, image sampling 
- and pre-trained [DAMSM](https://github.com/taoxugit/AttnGAN) weights from [GoogleDrive](https://drive.google.com/file/d/1_B7gdUwStck8Kop9hNL2YUNWF6hIxCNx/view?usp=sharing) and extarct them 
+ and pre-trained DAMSM from [GoogleDrive](https://drive.google.com/file/d/1_B7gdUwStck8Kop9hNL2YUNWF6hIxCNx/view?usp=sharing) and extarct them 
  to *dataset/* directory as specified in config.bird.yml/config.coco.yml.
 ## Training Demo
 ```
