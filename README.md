@@ -1,5 +1,5 @@
 
-# TDANet: Text-Guided Neural Image Inpainting 
+# TDANet: Text-Guided Neural Image Inpainting， MM'2020 (Oral)
 [MM](https://dl.acm.org/doi/10.1145/3394171.3414017) | [ArXiv](https://arxiv.org/abs/2004.03212) 
 <br>
 
