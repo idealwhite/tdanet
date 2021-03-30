@@ -17,7 +17,7 @@ by Lisai Zhang, Qingcai Chen, Baotian Hu and Shuoran Jiang. Given one masked ima
 
 # Getting started
 ## Installation
-This code was tested with Pytoch 1.2.0, CUDA 10.1, Python 3.6 and Ubuntu 16.04
+This code was tested with Pytoch 1.2.0, CUDA 10.1, Python 3.6 and Ubuntu 16.04 with a 2080Ti GPU
 
 - Install Pytoch 1.2.0, torchvision, and other dependencies from [http://pytorch.org](http://pytorch.org)
 - Install python libraries [visdom](https://github.com/facebookresearch/visdom) and [dominate](https://github.com/Knio/dominate) for visualization
