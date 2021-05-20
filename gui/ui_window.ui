@@ -31,7 +31,7 @@
     </font>
    </property>
    <property name="text">
-    <string>Text Guided Image Inpainting</string>
+    <string>Text Guided Neural Image Inpainting</string>
    </property>
    <property name="alignment">
     <set>Qt::AlignCenter</set>
@@ -132,42 +132,12 @@
       </item>
       <item>
        <property name="text">
-        <string>bird_random</string>
+        <string>bird</string>
        </property>
       </item>
       <item>
        <property name="text">
-        <string>place2_random</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>coco_random</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>flower_random</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>bird_center</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>place2_center</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>coco_center</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>flower_center</string>
+        <string>coco</string>
        </property>
       </item>
      </widget>
