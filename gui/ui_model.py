@@ -12,7 +12,6 @@ from util.visualizer import Visualizer
 from options.global_config import TextConfig
 import json
 import pickle
-import time
 
 def compute_errors(ground_truth, pre):
 
@@ -46,12 +45,10 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
         self.show_result_flag = False
         self.opt.loadSize = [256, 256]
         self.visualizer = Visualizer(opt)
-        self.model_name = ['bird_random', 'place2_random','coco_random', 'flower_random',
-                           'bird_center', 'place2_center', 'coco_center', 'flower_center']
-        self.config_name = ['config.bird.yml', 'config.place2.yml', 'config.coco.yml', 'config.flower.yml',
-                           'config.bird.yml', 'config.place2.yml','config.coco.yml', 'config.flower.yml']
+        self.model_name = ['bird', 'coco']
+        self.config_name = ['config.bird.yml', 'config.coco.yml']
         self.img_root = './datasets/'
-        self.img_files = ['CUB_200_2011/test.flist', 'place2', 'coco', 'flower']
+        self.img_files = ['CUB_200_2011/test.flist', 'coco/valid.flist']
         self.graphicsView_2.setMaximumSize(self.opt.loadSize[0]+30, self.opt.loadSize[1]+30)
 
         # show logo
@@ -132,36 +129,29 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
             self.opt.name = self.model_name[index]
             self.opt.text_config = self.config_name[index]
             self.opt.img_file = self.img_root + self.img_files[index % len(self.img_files)]
-        self.model = create_model(self.opt)
 
-        self.image_paths, self.image_size = make_dataset(self.opt.img_file)
+            text_config = TextConfig(self.opt.text_config)
+            self.max_length = text_config.MAX_TEXT_LENGTH
+            x = pickle.load(open(text_config.VOCAB, 'rb'))
+            self.ixtoword = x[2]
+            self.wordtoix = x[3]
 
-        text_config = TextConfig(self.opt.text_config)
-        self.max_length = text_config.MAX_TEXT_LENGTH
-        if 'coco' in text_config.CAPTION.lower():
-            self.num_captions = 5
-        elif 'place' in text_config.CAPTION.lower():
-            self.num_captions = 1
-        else:
-            self.num_captions = 10
+            if index == 0:
+                self.image_paths, self.image_size = make_dataset(self.opt.img_file)
 
-        # load caption file
-        with open(text_config.CAPTION, 'r') as f:
-            self.captions = json.load(f)
-        with open(text_config.CATE_IMAGE_TRAIN, 'r') as f:
-            self.category_images_train = json.load(f)
-        with open(text_config.IMAGE_CATE_TRAIN, 'r') as f:
-            self.images_category = json.load(f)
+                # load caption file
+                with open(text_config.CAPTION, 'r') as f:
+                    self.captions = json.load(f)
 
-        x = pickle.load(open(text_config.VOCAB, 'rb'))
-        self.ixtoword = x[2]
-        self.wordtoix = x[3]
+            self.model = create_model(self.opt)
+
 
     def load_image(self):
         """Load the image"""
         self.fname, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'select the image', self.opt.img_file, 'Image files(*.jpg *.png)')
         self.showImage(self.fname)
-        self.random_caption()
+        if self.opt.name == 'bird':
+            self.random_caption()
 
     def random_image(self):
         """Random load the test image"""
@@ -190,8 +180,8 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
 
     def random_caption(self):
         img_name = os.path.basename(self.fname)
-        caption = sorted(self.captions[img_name], key=lambda x:len(x))[0]
-        self.textEdit.setText(caption)
+        # caption = sorted(self.captions[img_name], key=lambda x:len(x))[0]
+        # self.textEdit.setText(caption)
 
     def save_result(self):
         """Save the results to the disk"""
@@ -216,6 +206,7 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
         result_path = os.path.join(self.opt.results_dir, result_name)
         img_result = util.tensor2im(self.img_out)
         util.save_image(img_result, result_path)
+
 
     def new_painter(self, image=None):
         """Build a painter to load and process the image"""
@@ -299,15 +290,17 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
                                                 text_idx, text_len, self.model.text_encoder)
                 img_mask = torch.ones_like(img_m)
                 img_mask[img_m == 0.] = 0.
-                distributions, f, f_text = self.model.net_E(img_m, sentence_embedding, word_embeddings, None, img_mask)
+                distributions, f, f_text = self.model.net_E(img_m, sentence_embedding, word_embeddings, None, img_mask, img_c)
+
                 variation_factor = 1. if self.checkBox.isChecked() else 0.
                 q_distribution = torch.distributions.Normal(distributions[-1][0], distributions[-1][1] * variation_factor)
-                #q_distribution = torch.distributions.Normal( torch.zeros_like(distributions[-1][0]), torch.ones_like(distributions[-1][1]))
+
                 z = q_distribution.sample()
 
                 # decoder process
                 scale_mask = task.scale_pyramid(mask, 4)
-                self.img_g, self.atten = self.model.net_G(z, f_text, f_e=f[2], mask=scale_mask[0].chunk(3, dim=1)[0])
+                self.img_g, _ = self.model.net_G(z, f_text, f_e=f[2], mask=scale_mask[0].chunk(3, dim=1)[0])
+
                 self.img_out = (1 - mask) * self.img_g[-1].detach() + mask * img_m
 
                 # get score
@@ -318,5 +311,5 @@ class ui_model(QtWidgets.QWidget, Ui_Form):
                 self.PaintPanel.iteration += 1
 
         self.show_result_flag = True
-        import ipdb; ipdb.set_trace()
+        # import ipdb; ipdb.set_trace()
         self.show_result()
