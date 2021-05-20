@@ -2,13 +2,11 @@
 
 # Form implementation generated from reading ui file 'ui_window.ui'
 #
-# Created by: PyQt5 UI code generator 5.13.0
+# Created by: PyQt5 UI code generator 5.9
 #
 # WARNING! All changes made in this file will be lost!
 
-
 from PyQt5 import QtCore, QtGui, QtWidgets
-
 
 class Ui_Form(object):
     def setupUi(self, Form):
@@ -64,12 +62,6 @@ class Ui_Form(object):
         sizePolicy.setHeightForWidth(self.comboBox.sizePolicy().hasHeightForWidth())
         self.comboBox.setSizePolicy(sizePolicy)
         self.comboBox.setObjectName("comboBox")
-        self.comboBox.addItem("")
-        self.comboBox.addItem("")
-        self.comboBox.addItem("")
-        self.comboBox.addItem("")
-        self.comboBox.addItem("")
-        self.comboBox.addItem("")
         self.comboBox.addItem("")
         self.comboBox.addItem("")
         self.comboBox.addItem("")
@@ -156,7 +148,7 @@ class Ui_Form(object):
     def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate
         Form.setWindowTitle(_translate("Form", "Form"))
-        self.label.setText(_translate("Form", "Text Guided Image Inpainting"))
+        self.label.setText(_translate("Form", "Text Guided Neural Image Inpainting"))
         self.label_4.setText(_translate("Form", "Input:"))
         self.pushButton.setText(_translate("Form", "load"))
         self.pushButton_2.setText(_translate("Form", "random"))
@@ -164,14 +156,8 @@ class Ui_Form(object):
         self.pushButton_4.setText(_translate("Form", "save"))
         self.label_3.setText(_translate("Form", "Options:"))
         self.comboBox.setItemText(0, _translate("Form", "None"))
-        self.comboBox.setItemText(1, _translate("Form", "bird_random"))
-        self.comboBox.setItemText(2, _translate("Form", "place2_random"))
-        self.comboBox.setItemText(3, _translate("Form", "coco_random"))
-        self.comboBox.setItemText(4, _translate("Form", "flower_random"))
-        self.comboBox.setItemText(5, _translate("Form", "bird_center"))
-        self.comboBox.setItemText(6, _translate("Form", "place2_center"))
-        self.comboBox.setItemText(7, _translate("Form", "coco_center"))
-        self.comboBox.setItemText(8, _translate("Form", "flower_center"))
+        self.comboBox.setItemText(1, _translate("Form", "bird"))
+        self.comboBox.setItemText(2, _translate("Form", "coco"))
         self.label_2.setText(_translate("Form", "Bush Width:"))
         self.radioButton.setText(_translate("Form", "free-form"))
         self.radioButton_2.setText(_translate("Form", "rectangle"))
@@ -180,3 +166,4 @@ class Ui_Form(object):
         self.label_5.setText(_translate("Form", "<html><head/><body><p>Score:</p></body></html>"))
         self.label_7.setText(_translate("Form", "Output:"))
         self.checkBox.setText(_translate("Form", "Variance"))
+
