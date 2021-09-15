@@ -90,7 +90,7 @@ This software is for educational and academic research purpose only. If you wish
  this software, please contact us at lisaizhang@foxmail.com.
 
 ## Acknowledge
-We would like to thanks Zheng et al. for providing their source code. This project is fit from their greate [Pluralistic Image Completion Project](https://github.com/lyndonzheng/Pluralistic-Inpainting).
+We would like to thanks Zheng et al. for providing their source code. This project is fit from their great [Pluralistic Image Completion Project](https://github.com/lyndonzheng/Pluralistic-Inpainting).
 
 ## Citation
 If you use this code for your research, please cite our paper.
